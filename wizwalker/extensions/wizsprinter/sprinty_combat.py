@@ -51,8 +51,8 @@ class SprintyCombat(CombatHandler):
         await super().pass_button()
 
     async def get_cards(self) -> List[CombatCard]:  # extended to sort by enchanted
-        async def _inner(self) -> List[CombatCard]:
-            cards = await super().get_cards()
+        async def _inner() -> List[CombatCard]:
+            cards = await super(CombatHandler, self).get_cards()
             rese, res = [], []
             for card in cards:
                 if await card.is_enchanted():
@@ -402,6 +402,8 @@ class SprintyCombat(CombatHandler):
         self.was_pass = False
         current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset) % len(
             self.config.config.infinite_rounds)
+        if len(self.config.config.infinite_rounds) > 0:
+            current_round = current_round % len(self.config.config.infinite_rounds)
 
         member = await self.get_client_member()
         if await member.is_stunned():
