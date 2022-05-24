@@ -51,14 +51,19 @@ class SprintyCombat(CombatHandler):
         await super().pass_button()
 
     async def get_cards(self) -> List[CombatCard]:  # extended to sort by enchanted
-        cards = await super().get_cards()
-        rese, res = [], []
-        for card in cards:
-            if await card.is_enchanted():
-                rese.append(card)
-            else:
-                res.append(card)
-        return rese + res
+        async def _inner(self) -> List[CombatCard]:
+            cards = await super().get_cards()
+            rese, res = [], []
+            for card in cards:
+                if await card.is_enchanted():
+                    rese.append(card)
+                else:
+                    res.append(card)
+            return rese + res
+        try:
+            return await wizwalker.utils.maybe_wait_for_any_value_with_timeout(_inner, sleep_time=0.2, timeout=2.0)
+        except wizwalker.errors.ExceptionalTimeout:
+            return []
 
     async def get_card_named(self, name: str) -> Optional[CombatCard]:
         try:
