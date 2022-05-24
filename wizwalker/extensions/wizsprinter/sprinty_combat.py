@@ -52,7 +52,7 @@ class SprintyCombat(CombatHandler):
 
     async def get_cards(self) -> List[CombatCard]:  # extended to sort by enchanted
         async def _inner() -> List[CombatCard]:
-            cards = await super(CombatHandler, self).get_cards()
+            cards = await super(SprintyCombat, self).get_cards()
             rese, res = [], []
             for card in cards:
                 if await card.is_enchanted():
