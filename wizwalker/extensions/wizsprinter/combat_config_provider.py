@@ -137,7 +137,7 @@ class TargetData:
         self.extra_data = extra_data
         self.is_literal = is_literal
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"TargetData(target_type={self.target_type}, extra_data={self.extra_data}, is_literal={self.is_literal})"
 
 
@@ -161,8 +161,8 @@ class PriorityLine:
 
 class CombatConfig:
     def __init__(self, rounds: List[PriorityLine]):
-        self.specific_rounds = {}
-        self.infinite_rounds = []
+        self.specific_rounds: dict[int, PriorityLine] = {}
+        self.infinite_rounds: list[PriorityLine] = []
         for _round in rounds:
             if _round.round is None:
                 self.infinite_rounds.append(_round)
@@ -283,13 +283,13 @@ class TreeToConfig(Transformer):
         s, = s
         return s
 
-    def words(self, items):
+    def words(self, items) -> str:
         res = ""
         for i in items:
             res += f" {i}"
         return res[1:]
 
-    def string(self, items):
+    def string(self, items) -> str:
         res: str = items[0]
         res = res.encode("latin1").decode("unicode_escape")
         return res
@@ -309,10 +309,11 @@ class CombatConfigProvider:
         tree = parser.parse(file_contents)
         return TreeToConfig().transform(tree)
 
-    def get_real_round(self, r: int):
+    def get_real_round(self, r: int) -> Optional[PriorityLine]:
         if r in self.config.specific_rounds:
             return self.config.specific_rounds[r]
         return None
 
-    def get_relative_round(self, r: int):
+    def get_relative_round(self, r: int) -> PriorityLine:
+        # TODO: % 0 is bad. Fix that
         return self.config.infinite_rounds[r % len(self.config.infinite_rounds)]
