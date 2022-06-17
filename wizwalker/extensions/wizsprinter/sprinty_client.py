@@ -2,7 +2,7 @@ from typing import *
 
 from wizwalker import XYZ, Keycode, MemoryReadError
 from wizwalker.client import Client
-from wizwalker.memory import DynamicClientObject
+from wizwalker.memory import DynamicClientObject, ClientObject
 
 
 class SprintyClient(Client):
@@ -19,7 +19,7 @@ class SprintyClient(Client):
     async def get_base_entity_list(self, excluded_ids: Set[int] = None) -> List[DynamicClientObject]:
         return await self.remove_excluded_entities_from(await super().get_base_entity_list(), excluded_ids)
 
-    async def get_base_entities_with_predicate(self, predicate: Callable, excluded_ids: Set[int] = None):
+    async def get_base_entities_with_predicate(self, predicate: Callable[[ClientObject], bool], excluded_ids: Set[int] = None):
         entities = []
 
         for entity in await self.get_base_entity_list(excluded_ids):
@@ -32,7 +32,7 @@ class SprintyClient(Client):
         return await self.remove_excluded_entities_from(await super().get_base_entities_with_name(name), excluded_ids)
 
     async def get_base_entities_with_vague_name(self, name: str, excluded_ids: Set[int] = None) -> List[DynamicClientObject]:
-        async def _pred(e):
+        async def _pred(e: ClientObject):
             if temp := await e.object_template():
                 return name.lower() in (await temp.object_name()).lower()
             return False
@@ -76,7 +76,6 @@ class SprintyClient(Client):
     async def find_safe_entities_from(self, entities: List[DynamicClientObject], safe_distance: float = 700) \
             -> List[DynamicClientObject]:
         mob_positions = []
-        a = (await self.stats.current_gold())
         for mob in await self.get_mobs():
             mob_positions.append(await mob.location())
 
@@ -107,7 +106,7 @@ class SprintyClient(Client):
                 closest = w
         return closest
 
-    async def find_closest_by_predicate(self, pred: Callable, only_safe: bool = False,
+    async def find_closest_by_predicate(self, pred: Callable[[ClientObject], bool], only_safe: bool = False,
                                         excluded_ids: Set[int] = None) -> Optional[DynamicClientObject]:
         return await self.find_closest_of_entities(await self.get_base_entities_with_predicate(pred, excluded_ids), only_safe)
 
