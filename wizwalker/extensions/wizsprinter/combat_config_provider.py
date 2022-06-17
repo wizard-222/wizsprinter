@@ -4,6 +4,9 @@ from enum import Enum, auto
 from lark import Lark, Transformer
 
 
+# TODO: bias for auto may be interesting
+
+
 def get_sprinty_grammar():
     return r"""
             ?start: config
@@ -31,6 +34,8 @@ def get_sprinty_grammar():
             
             round_specifier: _newlines? "{" expression "}" _newlines?
             
+            
+            auto: _spaced{"auto"}
             
             any_spell: _spaced{"any"} _less_than spell_type (_and spell_type)* _greater_than
             spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_shield | spell_trap | spell_enchant
@@ -295,9 +300,25 @@ class TreeToConfig(Transformer):
         return res
 
 
-class CombatConfigProvider:
-    def __init__(self, path: str, cast_time: float = 0.2):
+from sprinty_combat import SprintyCombat
+
+class CombatConfigBackend:
+    def __init__(self, cast_time: float = 0.2):
         self.cast_time = cast_time
+        self.combat = None
+
+    def attach_combat(self, combat: SprintyCombat):
+        self.combat = combat
+
+    def get_real_round(self, r: int) -> Optional[PriorityLine]:
+        raise NotImplementedError()
+
+    def get_relative_round(self, r: int) -> Optional[PriorityLine]:
+        raise NotImplementedError()
+
+class CombatConfigProvider(CombatConfigBackend):
+    def __init__(self, path: str, cast_time: float = 0.2):
+        super().__init__(cast_time=cast_time)
         self.filename = path
         with open(path) as file:
             self.config: CombatConfig = self.parse_config(file.read())
@@ -318,3 +339,13 @@ class CombatConfigProvider:
         if len(self.config.infinite_rounds) > 0:
             return self.config.infinite_rounds[r % len(self.config.infinite_rounds)]
         return None
+
+class CombatConfigGenerator(CombatConfigBackend):
+    def __init__(self, cast_time: float = 0.2):
+        super().__init__(cast_time=cast_time)
+    
+    def get_real_round(self, r: int) -> Optional[PriorityLine]:
+        pass
+
+    def get_relative_round(self, r: int) -> Optional[PriorityLine]:
+        return self.get_real_round(r) # it's all automatic, so they mean the same thing

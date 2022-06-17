@@ -6,12 +6,12 @@ from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects
 
-from .combat_config_provider import CombatConfigProvider, TargetType, TargetData, MoveConfig, TemplateSpell \
+from .combat_config_provider import CombatConfigBackend, TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
 
 
 class SprintyCombat(CombatHandler):
-    def __init__(self, client: wizwalker.client.Client, config_provider: CombatConfigProvider):
+    def __init__(self, client: wizwalker.client.Client, config_provider: CombatConfigBackend):
         super().__init__(client)
         self.config = config_provider
         self.turn_adjust = 0
@@ -392,6 +392,7 @@ class SprintyCombat(CombatHandler):
         self.turn_adjust -= 1
 
     async def handle_round(self):
+        self.config.attach_combat(self)
         real_round = await self.round_number()
         self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
 
