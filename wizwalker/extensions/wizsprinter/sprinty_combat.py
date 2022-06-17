@@ -437,7 +437,7 @@ class SprintyCombat(CombatHandler):
                     else:
                         await self.pass_button()
                 else:  # Very bad. Probably using empty config
-                    raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty")
+                    raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty or contains only explicit rounds. Consider adding a pass or something else")
 
         self.had_first_round = True  # might go bad on throw
         self.prev_card_count = self.cur_card_count

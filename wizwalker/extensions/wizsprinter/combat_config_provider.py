@@ -314,6 +314,7 @@ class CombatConfigProvider:
             return self.config.specific_rounds[r]
         return None
 
-    def get_relative_round(self, r: int) -> PriorityLine:
-        # TODO: % 0 is bad. Fix that
-        return self.config.infinite_rounds[r % len(self.config.infinite_rounds)]
+    def get_relative_round(self, r: int) -> Optional[PriorityLine]:
+        if len(self.config.infinite_rounds) > 0:
+            return self.config.infinite_rounds[r % len(self.config.infinite_rounds)]
+        return None
