@@ -161,7 +161,7 @@ class SprintyCombat(CombatHandler):
                 return s
         return None
 
-    async def get_cards_by_template(self, template: TemplateSpell):
+    async def get_cards_by_template(self, template: TemplateSpell) -> list[CombatCard]:
         cards = await self.get_castable_cards()
         res = []
         allow_aoe = SpellType.type_aoe in template.requirements
