@@ -420,7 +420,7 @@ class SprintyCombat(CombatHandler):
             # TODO: Maybe make this more dramatic
             await self.fail_turn() # This is quite catastrophic. Use default fail for now
         
-        if member != None:
+        if member is not None:
             if await member.is_stunned():
                 await self.fail_turn()
             else:
