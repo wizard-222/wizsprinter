@@ -384,6 +384,10 @@ class SprintyCombat(CombatHandler):
         await to_cast.cast(target, sleep_time=self.config.cast_time)
         return True
 
+    async def fail_turn(self):
+        self.turn_adjust -= 1
+        await self.pass_button()
+
     async def on_fizzle(self):
         self.turn_adjust -= 1
 
@@ -405,25 +409,35 @@ class SprintyCombat(CombatHandler):
         if len(self.config.config.infinite_rounds) > 0:
             current_round = current_round % len(self.config.config.infinite_rounds)
 
-        member = await self.get_client_member()
-        if await member.is_stunned():
-            self.turn_adjust -= 1
-            await self.pass_button()
-        else:
-            round_config = self.config.get_real_round(real_round)
-            if round_config is None:
-                round_config = self.config.get_relative_round(current_round)
+        # Issue: #3. Need to make sure it's valid
+        member: CombatMember = None
+        try:
+            member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
+                self.get_client_member,
+                timeout=2.0
+            )
+        except wizwalker.errors.ExceptionalTimeout:
+            # TODO: Maybe make this more dramatic
+            await self.fail_turn() # This is quite catastrophic. Use default fail for now
+        
+        if member != None:
+            if await member.is_stunned():
+                await self.fail_turn()
             else:
-                self.rel_round_offset -= 1
-
-            if round_config is not None:
-                for p in round_config.priorities:  # go through rounds priorities
-                    if await self.try_execute_config(p):
-                        break  # we found a working priority and managed to cast it
+                round_config = self.config.get_real_round(real_round)
+                if round_config is None:
+                    round_config = self.config.get_relative_round(current_round)
                 else:
-                    await self.pass_button()
-            else:  # Very bad. Probably using empty config
-                raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty")
+                    self.rel_round_offset -= 1
+
+                if round_config is not None:
+                    for p in round_config.priorities:  # go through rounds priorities
+                        if await self.try_execute_config(p):
+                            break  # we found a working priority and managed to cast it
+                    else:
+                        await self.pass_button()
+                else:  # Very bad. Probably using empty config
+                    raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty")
 
         self.had_first_round = True  # might go bad on throw
         self.prev_card_count = self.cur_card_count
