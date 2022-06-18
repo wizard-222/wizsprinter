@@ -10,9 +10,6 @@ import sys
 from wizwalker.extensions.wizsprinter import WizSprinter, SprintyCombat, CombatConfigGenerator
 
 
-os.chdir(os.path.dirname(sys.argv[0]))
-
-
 async def main():
     async with WizSprinter() as handler:
         client = handler.get_new_clients()[0]
