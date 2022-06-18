@@ -41,10 +41,13 @@ class SprintyCombat(CombatHandler):
                 if name == await member.name():
                     return member
             return None
-        return await wizwalker.utils.maybe_wait_for_value_with_timeout(
-            _inner,
-            timeout=2.0
-        )
+        try:
+            return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+                _inner,
+                timeout=2.0
+            )
+        except wizwalker.errors.ExceptionalTimeout:
+            return None
 
     async def get_member_vaguely_named(self, name: str) -> Optional[CombatMember]:
         # Issue #4
@@ -55,10 +58,13 @@ class SprintyCombat(CombatHandler):
                 if name.lower() in (await member.name()).lower():
                     return member
             return None
-        return await wizwalker.utils.maybe_wait_for_value_with_timeout(
-            _inner,
-            timeout=2.0
-        )
+        try:
+            return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+                _inner,
+                timeout=2.0
+            )
+        except wizwalker.errors.ExceptionalTimeout:
+            return None
 
     async def pass_button(self):
         self.was_pass = True
@@ -389,10 +395,11 @@ class SprintyCombat(CombatHandler):
                 if enchant_card is not None:
                     # Issue: 5. Casting wasn't that reliable
                     try:
-                        while True:
+                        while enchant_card != None:
                             await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
-                    except wizwalker.errors.WizWalkerMemoryError:
-                        pass # this is expected and wanted
+                            enchant_card = await self.try_get_spell(move_config.move.enchant, only_enchants=True)
+                    except wizwalker.errors.WizWalkerMemoryError or ValueError:
+                        pass # Let it happen if it happens
                     self.cur_card_count -= 1
 
                 elif enchant_card is None and not move_config.move.enchant.optional:
@@ -404,10 +411,11 @@ class SprintyCombat(CombatHandler):
         
         # Issue: 5. Casting wasn't that reliable
         try:
-            while True:
+            while to_cast != None:     
                 await to_cast.cast(target, sleep_time=self.config.cast_time)
-        except wizwalker.errors.WizWalkerMemoryError:
-            pass # this is expected and wanted
+                to_cast = await self.try_get_spell(move_config.move.card)
+        except wizwalker.errors.WizWalkerMemoryError or ValueError:
+            pass # Let it happen if it happens
         return True
 
     async def fail_turn(self):

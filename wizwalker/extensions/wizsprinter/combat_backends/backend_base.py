@@ -3,7 +3,7 @@ from typing import *
 from .combat_config_parser import PriorityLine
 
 class BaseCombatBackend:
-    def __init__(self, cast_time: float = 0.2):
+    def __init__(self, cast_time: float = 0.3):
         self.cast_time = cast_time
         self.combat = None
 
