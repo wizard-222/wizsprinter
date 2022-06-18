@@ -387,7 +387,12 @@ class SprintyCombat(CombatHandler):
             enchant_card = await self.try_get_spell(move_config.move.enchant, only_enchants=True)
             if enchant_card != "none":
                 if enchant_card is not None:
-                    await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
+                    # Issue: 5. Casting wasn't that reliable
+                    try:
+                        while True:
+                            await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
+                    except wizwalker.errors.WizWalkerMemoryError:
+                        pass # this is expected and wanted
                     self.cur_card_count -= 1
 
                 elif enchant_card is None and not move_config.move.enchant.optional:
@@ -396,8 +401,13 @@ class SprintyCombat(CombatHandler):
         to_cast = await self.try_get_spell(move_config.move.card)
         if to_cast is None:
             return False  # this should not happen
-
-        await to_cast.cast(target, sleep_time=self.config.cast_time) # TODO: Make cast more reliable. Fails sometimes
+        
+        # Issue: 5. Casting wasn't that reliable
+        try:
+            while True:
+                await to_cast.cast(target, sleep_time=self.config.cast_time)
+        except wizwalker.errors.WizWalkerMemoryError:
+            pass # this is expected and wanted
         return True
 
     async def fail_turn(self):
