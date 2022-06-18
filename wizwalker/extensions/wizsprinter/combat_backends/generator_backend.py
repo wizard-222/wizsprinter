@@ -1,7 +1,7 @@
 from typing import *
 
 from .backend_base import BaseCombatBackend
-from ..combat_config_parser import PriorityLine
+from .combat_config_parser import PriorityLine
 from ..sprinty_combat import SprintyCombat
 
 class CombatConfigGenerator(BaseCombatBackend):

@@ -3,7 +3,7 @@ from typing import *
 from lark import Lark
 
 from .backend_base import BaseCombatBackend
-from ..combat_config_parser import CombatConfig, PriorityLine, get_sprinty_grammar, TreeToConfig
+from .combat_config_parser import CombatConfig, PriorityLine, get_sprinty_grammar, TreeToConfig
 from ..sprinty_combat import SprintyCombat
 
 class CombatConfigProvider(BaseCombatBackend):

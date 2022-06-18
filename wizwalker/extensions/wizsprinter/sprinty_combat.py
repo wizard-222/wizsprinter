@@ -6,7 +6,7 @@ from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects
 
-from .combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
+from .combat_backends.combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
 from .combat_backends.backend_base import BaseCombatBackend
 
