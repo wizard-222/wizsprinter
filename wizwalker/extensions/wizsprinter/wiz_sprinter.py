@@ -1,6 +1,6 @@
 from typing import *
 
-from wizwalker import WizWalker, Client
+from wizwalker import ClientHandler, Client
 
 from .sprinty_client import SprintyClient
 
@@ -11,7 +11,7 @@ def upgrade_clients(clients: List[Client]) -> List[SprintyClient]:
     return clients
 
 
-class WizSprinter(WizWalker):
+class WizSprinter(ClientHandler):
     def __repr__(self):
         return f"<WizSprinter {self.clients=}>"
 
@@ -24,7 +24,7 @@ class WizSprinter(WizWalker):
         Remove and return clients that are no longer running
 
         Returns:
-             List of the dead clients removed
+            List of the dead clients removed
         """
         return upgrade_clients(super().remove_dead_clients())
 
