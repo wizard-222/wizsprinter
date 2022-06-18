@@ -6,13 +6,18 @@ from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects
 
-from .combat_config_provider import CombatConfigBackend, TargetType, TargetData, MoveConfig, TemplateSpell \
+from .combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
+from .combat_backends.backend_base import BaseCombatBackend
+
+
+# TODO: Make mouseless manage itself
 
 
 class SprintyCombat(CombatHandler):
-    def __init__(self, client: wizwalker.client.Client, config_provider: CombatConfigBackend):
+    def __init__(self, client: wizwalker.client.Client, config_provider: BaseCombatBackend):
         super().__init__(client)
+        self.client: wizwalker.client.Client = client # to restore autocomplete
         self.config = config_provider
         self.turn_adjust = 0
         self.cur_card_count = 0
@@ -392,53 +397,62 @@ class SprintyCombat(CombatHandler):
         self.turn_adjust -= 1
 
     async def handle_round(self):
-        self.config.attach_combat(self)
-        real_round = await self.round_number()
-        self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
-
-        if not self.had_first_round:
-            current_round = real_round - 1
-            if current_round > 0:
-                self.turn_adjust -= current_round
-        else:
-            if self.cur_card_count >= self.prev_card_count and not self.was_pass:
-                await self.on_fizzle()
-
-        self.was_pass = False
-        current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset) % len(
-            self.config.config.infinite_rounds)
-        if len(self.config.config.infinite_rounds) > 0:
-            current_round = current_round % len(self.config.config.infinite_rounds)
-
-        # Issue: #3. Need to make sure it's valid
-        member: CombatMember = None
         try:
-            member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
-                self.get_client_member,
-                timeout=2.0
-            )
-        except wizwalker.errors.ExceptionalTimeout:
-            # TODO: Maybe make this more dramatic
-            await self.fail_turn() # This is quite catastrophic. Use default fail for now
+            await self.client.mouse_handler.activate_mouseless()
+        except wizwalker.errors.HookAlreadyActivated:
+            pass
         
-        if member is not None:
-            if await member.is_stunned():
-                await self.fail_turn()
+        try:
+            self.config.attach_combat(self) # For safety. Could probably also do this in handle_combat
+
+            real_round = await self.round_number()
+            self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
+
+            if not self.had_first_round:
+                current_round = real_round - 1
+                if current_round > 0:
+                    self.turn_adjust -= current_round
             else:
-                round_config = self.config.get_real_round(real_round)
-                if round_config is None:
-                    round_config = self.config.get_relative_round(current_round)
+                if self.cur_card_count >= self.prev_card_count and not self.was_pass:
+                    await self.on_fizzle()
+
+            self.was_pass = False
+            current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset)
+
+            # Issue: #3. Need to make sure it's valid
+            member: CombatMember = None
+            try:
+                member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
+                    self.get_client_member,
+                    timeout=2.0
+                )
+            except wizwalker.errors.ExceptionalTimeout:
+                # TODO: Maybe make this more dramatic
+                await self.fail_turn() # This is quite catastrophic. Use default fail for now
+            
+            if member is not None:
+                if await member.is_stunned():
+                    await self.fail_turn()
                 else:
-                    self.rel_round_offset -= 1
-
-                if round_config is not None:
-                    for p in round_config.priorities:  # go through rounds priorities
-                        if await self.try_execute_config(p):
-                            break  # we found a working priority and managed to cast it
+                    round_config = self.config.get_real_round(real_round)
+                    if round_config is None:
+                        round_config = self.config.get_relative_round(current_round)
                     else:
-                        await self.pass_button()
-                else:  # Very bad. Probably using empty config
-                    raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty or contains only explicit rounds. Consider adding a pass or something else")
+                        self.rel_round_offset -= 1
 
-        self.had_first_round = True  # might go bad on throw
-        self.prev_card_count = self.cur_card_count
+                    if round_config is not None:
+                        for p in round_config.priorities:  # go through rounds priorities
+                            if await self.try_execute_config(p):
+                                break  # we found a working priority and managed to cast it
+                        else:
+                            await self.pass_button()
+                    else:  # Very bad. Probably using empty config
+                        raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty or contains only explicit rounds. Consider adding a pass or something else")
+
+            self.had_first_round = True  # might go bad on throw
+            self.prev_card_count = self.cur_card_count
+        finally:
+            try:
+                await self.client.mouse_handler.deactivate_mouseless()
+            except wizwalker.errors.HookNotActive:
+                pass

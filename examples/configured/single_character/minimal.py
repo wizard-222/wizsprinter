@@ -1,3 +1,8 @@
+"""
+Very simple example for using WizSprinter's combat system.
+It will handle battles for you using config.txt
+"""
+
 import asyncio
 import os
 import sys
@@ -14,11 +19,11 @@ async def main():
 
         print("Preparing")
         await client.activate_hooks()
-        await client.mouse_handler.activate_mouseless() # TODO: Remove once SprintyCombat handles it on it's own
         print("It's sprintin' time")
 
-        combat = SprintyCombat(client, CombatConfigProvider("./config.txt"))
-        await combat.wait_for_combat()
+        while True:
+          combat = SprintyCombat(client, CombatConfigProvider("./config.txt"))
+          await combat.wait_for_combat()
 
 
 if __name__ == "__main__":
