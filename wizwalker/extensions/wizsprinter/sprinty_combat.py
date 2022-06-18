@@ -33,20 +33,32 @@ class SprintyCombat(CombatHandler):
         await super().handle_combat()
 
     async def get_member_named(self, name: str) -> Optional[CombatMember]:
-        members: List[CombatMember] = await self.get_members()
+        # Issue: #4
+        async def _inner():
+            members: List[CombatMember] = await self.get_members()
 
-        for member in members:
-            if name == await member.name():
-                return member
-        return None
+            for member in members:
+                if name == await member.name():
+                    return member
+            return None
+        return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+            _inner,
+            timeout=2.0
+        )
 
     async def get_member_vaguely_named(self, name: str) -> Optional[CombatMember]:
-        members = await self.get_members()
+        # Issue #4
+        async def _inner():
+            members = await self.get_members()
 
-        for member in members:
-            if name.lower() in (await member.name()).lower():
-                return member
-        return None
+            for member in members:
+                if name.lower() in (await member.name()).lower():
+                    return member
+            return None
+        return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+            _inner,
+            timeout=2.0
+        )
 
     async def pass_button(self):
         self.was_pass = True
