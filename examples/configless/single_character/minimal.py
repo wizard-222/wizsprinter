@@ -1,13 +1,13 @@
 """
 Very simple example for using WizSprinter's combat system.
-It will handle battles for you using config.txt
+It will handle battles for you automatically, which has inherent weaknesses but high convenience
 """
 
 import asyncio
 import os
 import sys
 
-from wizwalker.extensions.wizsprinter import WizSprinter, SprintyCombat, CombatConfigProvider
+from wizwalker.extensions.wizsprinter import WizSprinter, SprintyCombat, CombatConfigGenerator
 
 
 os.chdir(os.path.dirname(sys.argv[0]))
@@ -22,7 +22,7 @@ async def main():
         print("It's sprintin' time")
 
         while True:
-            combat = SprintyCombat(client, CombatConfigProvider("./config.txt"))
+            combat = SprintyCombat(client, CombatConfigGenerator())
             await combat.wait_for_combat()
 
 

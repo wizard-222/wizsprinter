@@ -11,9 +11,6 @@ from .combat_backends.combat_config_parser import TargetType, TargetData, MoveCo
 from .combat_backends.backend_base import BaseCombatBackend
 
 
-# TODO: Make mouseless manage itself
-
-
 class SprintyCombat(CombatHandler):
     def __init__(self, client: wizwalker.client.Client, config_provider: BaseCombatBackend):
         super().__init__(client)
@@ -377,16 +374,18 @@ class SprintyCombat(CombatHandler):
         if move_config.move.enchant is not None and not await cur_card.is_enchanted():
             enchant_card = await self.try_get_spell(move_config.move.enchant, only_enchants=True)
             if enchant_card != "none":
-                if enchant_card is None:
+                if enchant_card is not None:
+                    await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
+                    self.cur_card_count -= 1
+
+                elif enchant_card is None and not move_config.move.enchant.optional:
                     return False
-                await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
-                self.cur_card_count -= 1
 
         to_cast = await self.try_get_spell(move_config.move.card)
         if to_cast is None:
             return False  # this should not happen
 
-        await to_cast.cast(target, sleep_time=self.config.cast_time)
+        await to_cast.cast(target, sleep_time=self.config.cast_time) # TODO: Make cast more reliable. Fails sometimes
         return True
 
     async def fail_turn(self):
@@ -434,9 +433,9 @@ class SprintyCombat(CombatHandler):
                 if await member.is_stunned():
                     await self.fail_turn()
                 else:
-                    round_config = self.config.get_real_round(real_round)
+                    round_config = await self.config.get_real_round(real_round)
                     if round_config is None:
-                        round_config = self.config.get_relative_round(current_round)
+                        round_config = await self.config.get_relative_round(current_round)
                     else:
                         self.rel_round_offset -= 1
 
@@ -447,7 +446,7 @@ class SprintyCombat(CombatHandler):
                         else:
                             await self.pass_button()
                     else:  # Very bad. Probably using empty config
-                        raise RuntimeError(f"Full config fail! \"{self.config.filename}\" might be empty or contains only explicit rounds. Consider adding a pass or something else")
+                        await self.config.handle_no_cards_given()
 
             self.had_first_round = True  # might go bad on throw
             self.prev_card_count = self.cur_card_count

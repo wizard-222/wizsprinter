@@ -10,8 +10,11 @@ class BaseCombatBackend:
     def attach_combat(self, combat): # TODO: Import+type hint not working because of circular import
         self.combat = combat
 
-    def get_real_round(self, r: int) -> Optional[PriorityLine]:
+    async def get_real_round(self, r: int) -> Optional[PriorityLine]:
         raise NotImplementedError()
 
-    def get_relative_round(self, r: int) -> Optional[PriorityLine]:
+    async def get_relative_round(self, r: int) -> Optional[PriorityLine]:
         raise NotImplementedError()
+
+    async def handle_no_cards_given(self):
+        pass

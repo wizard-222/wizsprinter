@@ -20,12 +20,15 @@ class CombatConfigProvider(BaseCombatBackend):
         tree = parser.parse(file_contents)
         return TreeToConfig().transform(tree)
 
-    def get_real_round(self, r: int) -> Optional[PriorityLine]:
+    async def get_real_round(self, r: int) -> Optional[PriorityLine]:
         if r in self.config.specific_rounds:
             return self.config.specific_rounds[r]
         return None
 
-    def get_relative_round(self, r: int) -> Optional[PriorityLine]:
+    async def get_relative_round(self, r: int) -> Optional[PriorityLine]:
         if len(self.config.infinite_rounds) > 0:
             return self.config.infinite_rounds[r % len(self.config.infinite_rounds)]
         return None
+
+    async def handle_no_cards_given(self):
+        raise RuntimeError(f"Full config fail! \"{self.filename}\" might be empty or contains only explicit rounds. Consider adding a pass or something else")
