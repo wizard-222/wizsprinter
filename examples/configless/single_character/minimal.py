@@ -4,8 +4,6 @@ It will handle battles for you automatically, which has inherent weaknesses but 
 """
 
 import asyncio
-import os
-import sys
 
 from wizwalker.extensions.wizsprinter import WizSprinter, SprintyCombat, CombatConfigGenerator
 
