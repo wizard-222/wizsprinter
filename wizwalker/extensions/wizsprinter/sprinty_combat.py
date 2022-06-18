@@ -104,15 +104,21 @@ class SprintyCombat(CombatHandler):
         return await self.get_card_with_predicate(_pred)
 
     async def get_card_counts(self) -> Tuple[int, int]:
-        window = None
-        while window is None:
-            window, *_ = await self.client.root_window.get_windows_with_name("CountText")
-        text: str = await window.maybe_text()
-        _, count_text = text.splitlines()
-        count_text = count_text[8:-9]
-        count_text = count_text.replace("of", "").strip()  # I know this sucks
-        res1, res2 = count_text.split()
-        return int(res1), int(res2)
+        # Issue: #6. Very rare error
+        async def _inner():
+            window = None
+            while window is None:
+                window, *_ = await self.client.root_window.get_windows_with_name("CountText")
+            text: str = await window.maybe_text()
+            _, count_text = text.splitlines()
+            count_text = count_text[8:-9]
+            count_text = count_text.replace("of", "").strip()  # I know this sucks
+            res1, res2 = count_text.split()
+            return int(res1), int(res2)
+        try:
+            return await wizwalker.utils.maybe_wait_for_any_value_with_timeout(_inner, sleep_time=0.2, timeout=2.0)
+        except wizwalker.errors.ExceptionalTimeout:
+            return (0, 0) # TODO: Maybe propagate, but good enough for now
 
     async def get_castable_cards(self) -> List[CombatCard]:  # extension for castable cards only
         async def _pred(card: CombatCard):
