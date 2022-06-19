@@ -400,12 +400,10 @@ class SprintyCombat(CombatHandler):
             if enchant_card != "none":
                 if enchant_card is not None:
                     # Issue: 5. Casting wasn't that reliable
-                    try:
-                        while enchant_card != None:
-                            await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
-                            enchant_card = await self.try_get_spell(move_config.move.enchant, only_enchants=True)
-                    except wizwalker.errors.WizWalkerMemoryError or ValueError:
-                        pass # Let it happen if it happens
+                    pre_enchant_count = len(await self.get_cards())
+                    while len(await self.get_cards()) == pre_enchant_count:
+                        await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
+
                     self.cur_card_count -= 1
 
                 elif enchant_card is None and (isinstance(move_config.move.enchant, TemplateSpell) and not move_config.move.enchant.optional):
