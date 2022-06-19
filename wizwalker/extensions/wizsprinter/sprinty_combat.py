@@ -408,7 +408,7 @@ class SprintyCombat(CombatHandler):
                         pass # Let it happen if it happens
                     self.cur_card_count -= 1
 
-                elif enchant_card is None and not move_config.move.enchant.optional:
+                elif enchant_card is None and (isinstance(move_config.move.enchant, TemplateSpell) and not move_config.move.enchant.optional):
                     return False
 
         to_cast = await self.try_get_spell(move_config.move.card)

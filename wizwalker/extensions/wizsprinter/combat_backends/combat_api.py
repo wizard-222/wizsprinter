@@ -38,7 +38,7 @@ class NamedSpell(Spell):
 class TemplateSpell(Spell):
     def __init__(self, requirements: List[SpellType], optional=False) -> None:
         self.requirements = requirements
-        self.optional = True
+        self.optional = optional
 
     def __repr__(self) -> str:
         return f"TemplateSpell(requirements={self.requirements}, optional={self.optional})"
