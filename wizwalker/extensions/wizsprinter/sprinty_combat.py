@@ -419,6 +419,7 @@ class SprintyCombat(CombatHandler):
         try:
             while to_cast != None:     
                 await to_cast.cast(target, sleep_time=self.config.cast_time)
+                await asyncio.sleep(self.config.cast_time) # give it some time for card list to update
                 to_cast = await self.try_get_spell(move_config.move.card)
         except wizwalker.errors.WizWalkerMemoryError or ValueError:
             pass # Let it happen if it happens
