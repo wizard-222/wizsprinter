@@ -1,3 +1,4 @@
+import asyncio
 from typing import *
 
 import wizwalker
@@ -403,6 +404,7 @@ class SprintyCombat(CombatHandler):
                     pre_enchant_count = len(await self.get_cards())
                     while len(await self.get_cards()) == pre_enchant_count:
                         await enchant_card.cast(cur_card, sleep_time=self.config.cast_time*2)
+                        await asyncio.sleep(self.config.cast_time*2) # give it some time for card list to update
 
                     self.cur_card_count -= 1
 
