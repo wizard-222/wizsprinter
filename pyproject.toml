@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "WizSprinter"
-version = "0.5.2"
+version = "0.5.3"
 description = "A semi-official WizWalker extension"
 authors = ["SirOlaf <sirolaf@protonmail.com>"]
 readme = "README.rst"
