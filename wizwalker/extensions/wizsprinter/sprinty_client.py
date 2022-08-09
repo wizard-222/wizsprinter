@@ -182,7 +182,7 @@ class SprintyClient(Client):
             return True
         return False
 
-    async def goto_closest_by_name(self, name: str, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+    async def goto_closest_by_vague_name(self, name: str, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
         if e := await self.find_closest_by_vague_name(name, only_safe, excluded_ids):
             x, y, _ = await e.location()
             await self.goto(x, y)
