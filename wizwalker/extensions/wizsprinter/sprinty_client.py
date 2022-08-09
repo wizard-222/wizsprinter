@@ -168,6 +168,36 @@ class SprintyClient(Client):
     async def tp_to_closest_mob(self, excluded_ids: Set[int] = None) -> bool:
         return await self.tp_to_closest_of(await self.get_mobs(excluded_ids), False)
 
+    async def goto_closest_of(self, entities: List[DynamicClientObject], only_safe: bool = False):
+        if e := await self.find_closest_of_entities(entities, only_safe):
+            x, y, _ = await e.location()
+            await self.goto(x, y)
+            return True
+        return False
+
+    async def goto_closest_by_name(self, name: str, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+        if e := await self.find_closest_by_name(name, only_safe, excluded_ids):
+            x, y, _ = await e.location()
+            await self.goto(x, y)
+            return True
+        return False
+
+    async def goto_closest_by_name(self, name: str, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+        if e := await self.find_closest_by_vague_name(name, only_safe, excluded_ids):
+            x, y, _ = await e.location()
+            await self.goto(x, y)
+            return True
+        return False
+
+    async def goto_closest_health_wisp(self, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+        return await self.goto_closest_of(await self.get_health_wisps(excluded_ids), only_safe)
+
+    async def goto_closest_mana_wisp(self, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+        return await self.goto_closest_of(await self.get_mana_wisps(excluded_ids), only_safe)
+
+    async def goto_closest_mob(self, only_safe: bool = False, excluded_ids: Set[int] = None) -> bool:
+        return await self.goto_closest_of(await self.get_mob(excluded_ids), only_safe)
+    
     async def calc_health_ratio(self) -> float:
         """Simply returns current health divided by max health"""
         return await self.stats.current_hitpoints() / await self.stats.max_hitpoints()
