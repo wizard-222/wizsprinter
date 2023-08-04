@@ -13,7 +13,7 @@ from .combat_backends.backend_base import BaseCombatBackend
 
 
 class SprintyCombat(CombatHandler):
-    def __init__(self, client: wizwalker.client.Client, config_provider: BaseCombatBackend):
+    def __init__(self, client: wizwalker.client.Client, config_provider: BaseCombatBackend, handle_mouseless: bool = False):
         super().__init__(client)
         self.client: wizwalker.client.Client = client # to restore autocomplete
         self.config = config_provider
@@ -23,6 +23,7 @@ class SprintyCombat(CombatHandler):
         self.was_pass = False
         self.had_first_round = False
         self.rel_round_offset = 0
+        self.handle_mouseless = handle_mouseless
 
     async def handle_combat(self):
         self.turn_adjust = 0
@@ -244,7 +245,7 @@ class SprintyCombat(CombatHandler):
                     for e in effects:
                         target = await e.effect_target()
                         et = await e.effect_type()
-                        if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
+                        if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
                             break
                     else:
                         fits = False
@@ -491,7 +492,8 @@ class SprintyCombat(CombatHandler):
             self.had_first_round = True  # might go bad on throw
             self.prev_card_count = self.cur_card_count
         finally:
-            try:
-                await self.client.mouse_handler.deactivate_mouseless()
-            except wizwalker.errors.HookNotActive:
-                pass
+            if self.handle_mouseless:
+                try:
+                    await self.client.mouse_handler.deactivate_mouseless()
+                except wizwalker.errors.HookNotActive:
+                    pass
