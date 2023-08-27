@@ -17,34 +17,43 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     effects = await card.get_spell_effects()
     output_effects: List[DynamicSpellEffect] = []
 
-    for effect in effects:
-        if issubclass(effect, CompoundSpellEffect):
-            output_effects += await effect.effect_list()
+    try: 
+        for effect in effects:
+            if issubclass(effect, CompoundSpellEffect):
+                output_effects += await effect.effect_list()
 
-        elif issubclass(effect, ConditionalSpellEffect):
-            output_effects += [await elem.effect() for elem in await effect.elements()]
+            elif issubclass(effect, ConditionalSpellEffect):
+                output_effects += [await elem.effect() for elem in await effect.elements()]
 
-        elif issubclass(effect, HangingConversionSpellEffect):
-            output_effects += await effect.output_effect()
+            elif issubclass(effect, HangingConversionSpellEffect):
+                output_effects += await effect.output_effect()
 
-        else:
-            output_effects.append(effect)
+            else:
+                output_effects.append(effect)
+
+    except Exception as e:
+        print(e)
+
+    return output_effects
 
 
-async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
-    effects = await card.get_spell_effects()
-    output_effects: List[DynamicSpellEffect] = []
+# async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
+#     effects = await card.get_spell_effects()
+#     output_effects: List[DynamicSpellEffect] = []
 
-    for effect in effects:
-        try:
-            subeffects = effect.maybe_effect_list()
+#     for effect in effects:
+#         try:
+#             subeffects = await effect.maybe_effect_list()
 
-        except ValueError:
-            continue
+#         except ValueError:
+#             continue
 
-        except Exception as e:
-            print("ERRORED")
-            print(e)
+#         except Exception as e:
+#             print("ERRORED")
+#             print(e)
+
+
+
         
             
 
