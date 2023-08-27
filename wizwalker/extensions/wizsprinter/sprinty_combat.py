@@ -24,6 +24,9 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
                 output_effects += await effect.effect_list()
 
             elif issubclass(ConditionalSpellEffect, effect_class):
+                print("This activated")
+                print(type(effect))
+                issubclass(ConditionalSpellEffect, effect_class)
                 output_effects += [await elem.effect() for elem in await effect.elements()]
 
             elif issubclass(HangingConversionSpellEffect, effect_class):
