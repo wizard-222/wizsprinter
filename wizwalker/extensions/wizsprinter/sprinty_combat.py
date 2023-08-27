@@ -41,6 +41,43 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     return output_effects
 
 
+damage_effects = {
+    SpellEffects.damage,
+    SpellEffects.damage_no_crit,
+    SpellEffects.damage_over_time,
+    SpellEffects.damage_per_total_pip_power,
+    SpellEffects.instant_kill,
+    SpellEffects.divide_damage,
+    SpellEffects.steal_health,
+    SpellEffects.max_health_damage
+}
+heal_effects = {
+    SpellEffects.heal,
+    SpellEffects.heal_by_ward,
+    SpellEffects.heal_over_time,
+    SpellEffects.heal_percent,
+    SpellEffects.max_health_heal
+}
+charm_effects = {
+    SpellEffects.modify_outgoing_armor_piercing,
+    SpellEffects.modify_outgoing_damage,
+    SpellEffects.modify_outgoing_damage_flat,
+    SpellEffects.modify_outgoing_heal,
+    SpellEffects.modify_outgoing_heal_flat,
+    SpellEffects.cloaked_charm,
+    SpellEffects.modify_accuracy
+}
+ward_effects = {
+    SpellEffects.modify_incoming_armor_piercing,
+    SpellEffects.modify_incoming_damage,
+    SpellEffects.modify_incoming_damage_flat,
+    SpellEffects.modify_incoming_damage_over_time,
+    SpellEffects.modify_incoming_heal,
+    SpellEffects.modify_incoming_heal_flat,
+    SpellEffects.modify_incoming_heal_over_time
+}
+
+
 # async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
 #     effects = await card.get_spell_effects()
 #     output_effects: List[DynamicSpellEffect] = []
@@ -342,12 +379,19 @@ class SprintyCombat(CombatHandler):
                         fits = False
 
                 elif req is SpellType.type_aura:
-                    if "aura" not in c_type:
+                    for e in effects:
+                        _, et = await conditional_subeffect_check(e)
+                        if await e.num_rounds() > 0 and et not in damage_effects.union(heal_effects):
+                            break
+
+                    else:
                         fits = False
 
                 elif req is SpellType.type_global:
-                    if "global" not in c_type:
-                        fits = False
+                    for e in effects:
+                        target, et = await conditional_subeffect_check(e)
+                        if target is EffectTarget.target_global and et not in damage_effects.union(heal_effects):
+                            break
 
                 elif req is SpellType.type_polymorph:
                     for e in effects:
