@@ -342,21 +342,11 @@ class SprintyCombat(CombatHandler):
                         fits = False
 
                 elif req is SpellType.type_aura:
-                    for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
-                        if c_type.lower() is "aura":
-                            break
-
-                    else:
+                    if "aura" not in c_type:
                         fits = False
 
                 elif req is SpellType.type_global:
-                    for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
-                        if c_type.lower() is "global":
-                            break
-
-                    else:
+                    if "global" not in c_type:
                         fits = False
 
                 elif req is SpellType.type_polymorph:
