@@ -38,7 +38,7 @@ def get_sprinty_grammar():
             auto: _spaced{"auto"}
             
             any_spell: _spaced{"any"} _less_than spell_type (_and spell_type)* _greater_than
-            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_shield | spell_trap | spell_enchant
+            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_shield | spell_trap | spell_enchant | spell_aura | spell_global | spell_polymorph | spell_shadow | spell_shadow_creature
             spell_damage: _spaced{"damage"}
             spell_aoe: _spaced{"aoe"}
             spell_heal: _spaced{"heal"}
@@ -48,6 +48,11 @@ def get_sprinty_grammar():
             spell_shield: _spaced{"shield"}
             spell_trap: _spaced{"trap"}
             spell_enchant: _spaced{"enchant"}
+            spell_aura: _spaced{"aura"}
+            spell_global: _spaced{"global"}
+            spell_polymorph: _spaced{"polymorph"}
+            spell_shadow: _spaced{"shadow"}
+            spell_shadow_creature: _spaced{"shadow_creature"}
             
             expression: INT
             
@@ -188,6 +193,21 @@ class TreeToConfig(Transformer):
 
     def round_specifier(self, items):
         return items[0]
+    
+    def spell_aura(self, _):
+        return SpellType.type_aura
+    
+    def spell_global(self, _):
+        return SpellType.type_global
+    
+    def spell_polymorph(self, _):
+        return SpellType.type_polymorph
+    
+    def spell_shadow(self, _):
+        return SpellType.type_shadow
+    
+    def spell_shadow_creature(self, _):
+        return SpellType.type_shadow_creature
 
     INT = int
 

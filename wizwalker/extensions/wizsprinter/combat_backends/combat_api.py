@@ -20,6 +20,12 @@ class SpellType(Enum):
     type_shield = auto()
     type_trap = auto()
     type_enchant = auto()
+    #Slack added types
+    type_aura = auto()
+    type_global = auto()
+    type_polymorph = auto()
+    type_shadow = auto()
+    type_shadow_creature = auto()
 
 
 class Spell:
