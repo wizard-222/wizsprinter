@@ -324,7 +324,7 @@ class SprintyCombat(CombatHandler):
                 elif req is SpellType.type_global:
                     for e in effects:
                         target, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.self and c_type.lower() is "global":
+                        if target is EffectTarget.target_global and c_type.lower() is "global":
                             break
 
                     else:
@@ -332,8 +332,8 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_polymorph:
                     for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.self and c_type.lower() is "polymorph":
+                        _, et = await conditional_subeffect_check(e)
+                        if et is SpellEffects.polymorph:
                             break
 
                     else:
@@ -341,8 +341,8 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_shadow:
                     for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.self and c_type.lower() is "shadow_self":
+                        _, et = await conditional_subeffect_check(e)
+                        if et is SpellEffects.shadow_self:
                             break
 
                     else:
@@ -350,8 +350,8 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_shadow_creature:
                     for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
-                        if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once, EffectTarget.enemy_single) and c_type.lower() is "shadow_creature":
+                        _, et = await conditional_subeffect_check(e)
+                        if et is SpellEffects.shadow_creature:
                             break
 
                     else:
