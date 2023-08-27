@@ -344,7 +344,7 @@ class SprintyCombat(CombatHandler):
                 elif req is SpellType.type_aura:
                     for e in effects:
                         target, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.self and c_type.lower() is "aura":
+                        if c_type.lower() is "aura":
                             break
 
                     else:
@@ -353,7 +353,7 @@ class SprintyCombat(CombatHandler):
                 elif req is SpellType.type_global:
                     for e in effects:
                         target, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.target_global and c_type.lower() is "global":
+                        if c_type.lower() is "global":
                             break
 
                     else:
