@@ -29,6 +29,22 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
 
         else:
             output_effects.append(effect)
+
+
+async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
+    effects = await card.get_spell_effects()
+    output_effects: List[DynamicSpellEffect] = []
+
+    for effect in effects:
+        try:
+            subeffects = effect.maybe_effect_list()
+
+        except ValueError:
+            continue
+
+        except Exception as e:
+            print("ERRORED")
+            print(e)
         
             
 
