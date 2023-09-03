@@ -6,7 +6,7 @@ from wizwalker.combat import CombatHandler
 from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects, DynamicSpellEffect
-from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect
+from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect, HangingDisposition
 
 from .combat_backends.combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
@@ -51,6 +51,13 @@ damage_effects = {
     SpellEffects.steal_health,
     SpellEffects.max_health_damage
 }
+buff_damage_effects = {
+    SpellEffects.modify_incoming_damage,
+    SpellEffects.modify_incoming_damage_flat,
+    SpellEffects.modify_incoming_damage_over_time,
+    SpellEffects.modify_outgoing_damage,
+    SpellEffects.modify_outgoing_damage_flat,
+}
 heal_effects = {
     SpellEffects.heal,
     SpellEffects.heal_by_ward,
@@ -77,6 +84,95 @@ ward_effects = {
     SpellEffects.modify_incoming_heal_over_time
 }
 
+ally_targets = {
+    EffectTarget.friendly_minion,
+    EffectTarget.friendly_single,
+    EffectTarget.friendly_single_not_me,
+    EffectTarget.friendly_team,
+    EffectTarget.friendly_team_all_at_once,
+    EffectTarget.multi_target_friendly,
+    EffectTarget.self
+}
+
+enemy_targets = {
+    EffectTarget.at_least_one_enemy,
+    EffectTarget.enemy_single,
+    EffectTarget.enemy_team,
+    EffectTarget.enemy_team_all_at_once,
+    EffectTarget.multi_target_enemy,
+    EffectTarget.preselected_enemy_single
+}
+
+
+
+
+def is_blade(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
+    '''
+    Returns whether or not an effect is a blade.
+
+    Args:
+        - effect_type (SpellEffects): Effect type enum of the SpellEffect
+        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
+    '''
+    return effect_type in charm_effects and disposition is HangingDisposition.beneficial
+
+
+def is_charm(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
+    '''
+    Returns whether or not an effect is a charm (Weakness, Infection, etc.).
+
+    Args:
+        - effect_type (SpellEffects): Effect type enum of the SpellEffect
+        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
+    '''
+    return effect_type in charm_effects and disposition is HangingDisposition.harmful
+
+
+def is_ward(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
+    '''
+    Returns whether or not an effect is a ward (Shield, Absorb, etc).
+
+    Args:
+        - effect_type (SpellEffects): Effect type enum of the SpellEffect
+        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
+    '''
+    return effect_type in ward_effects and disposition is HangingDisposition.beneficial
+
+
+def is_ward(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
+    '''
+    Returns whether or not an effect is a ward (Shield, Absorb, etc).
+
+    Args:
+        - effect_type (SpellEffects): Effect type enum of the SpellEffect
+        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
+    '''
+    return effect_type in ward_effects and disposition is HangingDisposition.beneficial
+
+
+def is_trap(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
+    '''
+    Returns whether or not an effect is a trap.
+
+    Args:
+        - effect_type (SpellEffects): Effect type enum of the SpellEffect
+        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
+    '''
+    return effect_type in ward_effects and disposition is HangingDisposition.harmful
+
+
+async def is_damage(effect: DynamicSpellEffect) -> bool:
+    effect_type, target, disposition = await conditional_subeffect_check(effect)
+
+    if is_blade(effect_type, disposition):
+        return effect_type in buff_damage_effects.union(damage_effects) and target in ally_targets
+    
+    elif is_trap(effect_type, disposition):
+        return effect_type in buff_damage_effects.union(damage_effects) and target in enemy_targets
+    
+    return effect_type in damage_effects and target in enemy_targets
+
+
 
 # async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
 #     effects = await card.get_spell_effects()
@@ -98,9 +194,10 @@ ward_effects = {
         
             
 
-async def conditional_subeffect_check(effect: DynamicSpellEffect) -> Tuple[int, int]:
+async def conditional_subeffect_check(effect: DynamicSpellEffect) -> Tuple[int, int, int]:
     target = await effect.effect_target()
     eff_type = await effect.effect_type()
+    disposition = await effect.disposition()
 
     if target == EffectTarget.invalid_target or eff_type == SpellEffects.invalid_spell_effect:
         try:
@@ -108,11 +205,12 @@ async def conditional_subeffect_check(effect: DynamicSpellEffect) -> Tuple[int, 
             if len(subeffects) != 0:
                 target = await subeffects[0].effect_target()
                 eff_type = await subeffects[0].effect_type()
+                disposition = await subeffects[0].disposition()
 
         except ValueError:
             pass
 
-    return (target, eff_type)
+    return (target, eff_type, disposition)
 
 
 
@@ -300,29 +398,37 @@ class SprintyCombat(CombatHandler):
         for c in cards:
             fits = True
             effects = await get_inner_card_effects(c)
-            c_type = (await c.type_name()).lower()
+            # c_type = (await c.type_name()).lower()
             for req in template.requirements:
                 if req is SpellType.type_damage:
                     for e in effects:
-                        target, eff = await conditional_subeffect_check(e)
-                        if target in (EffectTarget.enemy_team,
-                                      EffectTarget.enemy_team_all_at_once,
-                                      EffectTarget.enemy_single) \
-                                and eff in (SpellEffects.damage,
-                                            SpellEffects.damage_over_time,
-                                            SpellEffects.damage_per_total_pip_power) \
-                                or c_type == "damage":
+                        target, _, _ = await conditional_subeffect_check(e)
+                        # if target in (EffectTarget.enemy_team,
+                        #               EffectTarget.enemy_team_all_at_once,
+                        #               EffectTarget.enemy_single) \
+                        #         and eff in (SpellEffects.damage,
+                        #                     SpellEffects.damage_over_time,
+                        #                     SpellEffects.damage_per_total_pip_power) \
+                        #         or c_type == "damage":
+                        #     if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
+                        #         break
+                        #     elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
+                        #         continue
+                        #     else:
+                        #         break
+                        if await is_damage(e):
                             if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
                                 break
+
                             elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
                                 continue
-                            else:
-                                break
+
+                            break
                     else:
                         fits = False
                 elif req is SpellType.type_aoe:
                     for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
+                        target, _, _ = await conditional_subeffect_check(e)
                         if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once,
                                       EffectTarget.friendly_team, EffectTarget.friendly_team_all_at_once):
                             break
@@ -330,49 +436,55 @@ class SprintyCombat(CombatHandler):
                         fits = False
                 elif req is SpellType.type_trap:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
-                        if et is SpellEffects.modify_incoming_damage and target is EffectTarget.enemy_single:
+                        target, et, disposition = await conditional_subeffect_check(e)
+                        # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.enemy_single:
+                        #     break
+                        if is_trap(target, disposition) and et in enemy_targets:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_shield:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
-                        if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
+                        target, et, disposition = await conditional_subeffect_check(e)
+                        # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
+                        #     break
+                        if is_ward(target, disposition) and et in ally_targets:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_blade:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
-                        if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
+                        target, et, disposition = await conditional_subeffect_check(e)
+                        # if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
+                        #     break
+                        if is_blade(target, disposition) and et in ally_targets:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_heal:
                     for e in await c.get_spell_effects():
-                        _, et = await conditional_subeffect_check(e)
+                        _, et, _ = await conditional_subeffect_check(e)
                         if et is SpellEffects.heal:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_heal_other:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
+                        target, et, _ = await conditional_subeffect_check(e)
                         if (target is EffectTarget.friendly_team or target is EffectTarget.friendly_single) and et is SpellEffects.heal:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_heal_self:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
+                        target, et, _ = await conditional_subeffect_check(e)
                         if (target is EffectTarget.self or target is EffectTarget.friendly_team) and et is SpellEffects.heal:
                             break
                     else:
                         fits = False
                 elif req is SpellType.type_enchant:
                     for e in effects:
-                        target, _ = await conditional_subeffect_check(e)
+                        target, _, _ = await conditional_subeffect_check(e)
                         if await target is EffectTarget.spell:
                             break
                     else:
@@ -380,8 +492,9 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_aura:
                     for e in effects:
-                        _, et = await conditional_subeffect_check(e)
-                        if await e.num_rounds() > 0 and et not in damage_effects.union(heal_effects):
+                        _, et, _ = await conditional_subeffect_check(e)
+                        # TODO: This will fail if we somehow have an invalid aura effect. Only scenario where this should happen is with a variable aura.
+                        if await e.num_rounds() > 0 and et not in charm_effects.union(ward_effects):
                             break
 
                     else:
@@ -389,13 +502,13 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_global:
                     for e in effects:
-                        target, et = await conditional_subeffect_check(e)
+                        target, et, _ = await conditional_subeffect_check(e)
                         if target is EffectTarget.target_global and et not in damage_effects.union(heal_effects):
                             break
 
                 elif req is SpellType.type_polymorph:
                     for e in effects:
-                        _, et = await conditional_subeffect_check(e)
+                        _, et, _ = await conditional_subeffect_check(e)
                         if et is SpellEffects.polymorph:
                             break
 
@@ -404,7 +517,7 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_shadow:
                     for e in effects:
-                        _, et = await conditional_subeffect_check(e)
+                        _, et, _ = await conditional_subeffect_check(e)
                         if et is SpellEffects.shadow_self:
                             break
 
@@ -413,7 +526,7 @@ class SprintyCombat(CombatHandler):
 
                 elif req is SpellType.type_shadow_creature:
                     for e in effects:
-                        _, et = await conditional_subeffect_check(e)
+                        _, et, _ = await conditional_subeffect_check(e)
                         if et is SpellEffects.shadow_creature:
                             break
 
