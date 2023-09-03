@@ -420,10 +420,7 @@ class SprintyCombat(CombatHandler):
                             #     else:
                             #         break
                             if await is_damage(e):
-                                if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
-                                    break
-
-                                elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
+                                if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and not allow_aoe:
                                     continue
 
                                 break
