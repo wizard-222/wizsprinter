@@ -51,6 +51,7 @@ damage_effects = {
     SpellEffects.steal_health,
     SpellEffects.max_health_damage
 }
+
 buff_damage_effects = {
     SpellEffects.modify_incoming_damage,
     SpellEffects.modify_incoming_damage_flat,
@@ -58,6 +59,15 @@ buff_damage_effects = {
     SpellEffects.modify_outgoing_damage,
     SpellEffects.modify_outgoing_damage_flat,
 }
+
+buff_heal_effects = {
+    SpellEffects.modify_outgoing_heal,
+    SpellEffects.modify_outgoing_heal_flat,
+    SpellEffects.modify_incoming_heal,
+    SpellEffects.modify_incoming_heal_flat,
+    SpellEffects.modify_incoming_heal_over_time
+}
+
 heal_effects = {
     SpellEffects.heal,
     SpellEffects.heal_by_ward,
@@ -103,114 +113,147 @@ enemy_targets = {
     EffectTarget.preselected_enemy_single
 }
 
+aoe_targets = {
+    EffectTarget.enemy_team,
+    EffectTarget.enemy_team_all_at_once,
+    EffectTarget.friendly_team,
+    EffectTarget.friendly_team_all_at_once
+}
 
 
 
-def is_blade(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
-    '''
-    Returns whether or not an effect is a blade.
+async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe = False) -> bool:
+    eff_type = await effect.effect_type()
+    disp = await effect.disposition()
+    target = await effect.effect_target()
+    rounds = await effect.num_rounds()
 
-    Args:
-        - effect_type (SpellEffects): Effect type enum of the SpellEffect
-        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
-    '''
-    return effect_type in charm_effects and disposition is HangingDisposition.beneficial
-
-
-def is_charm(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
-    '''
-    Returns whether or not an effect is a charm (Weakness, Infection, etc.).
-
-    Args:
-        - effect_type (SpellEffects): Effect type enum of the SpellEffect
-        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
-    '''
-    return effect_type in charm_effects and disposition is HangingDisposition.harmful
+    _aoe_targets = aoe_targets
+    if not allow_aoe:
+        _aoe_targets = {}
 
 
-def is_ward(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
-    '''
-    Returns whether or not an effect is a ward (Shield, Absorb, etc).
+    def is_blade() -> bool:
+        return all(
+            eff_type in charm_effects,
+            disp is HangingDisposition.beneficial,
+            target in ally_targets,
+            rounds == 0,
+        )
 
-    Args:
-        - effect_type (SpellEffects): Effect type enum of the SpellEffect
-        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
-    '''
-    return effect_type in ward_effects and disposition is HangingDisposition.beneficial
+    def is_charm() -> bool:
+        return all(
+            eff_type in charm_effects,
+            disp is HangingDisposition.harmful,
+            target in enemy_targets,
+            rounds == 0,
+        )
 
+    def is_ward() -> bool:
+        return all(
+            eff_type in ward_effects,
+            disp is HangingDisposition.beneficial,
+            target in ally_targets,
+            rounds == 0,
+        )
 
-def is_ward(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
-    '''
-    Returns whether or not an effect is a ward (Shield, Absorb, etc).
+    def is_trap() -> bool:
+        return all(
+            eff_type in ward_effects,
+            disp is HangingDisposition.harmful,
+            target in enemy_targets,
+            rounds == 0,
+        )
 
-    Args:
-        - effect_type (SpellEffects): Effect type enum of the SpellEffect
-        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
-    '''
-    return effect_type in ward_effects and disposition is HangingDisposition.beneficial
-
-
-def is_trap(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
-    '''
-    Returns whether or not an effect is a trap.
-
-    Args:
-        - effect_type (SpellEffects): Effect type enum of the SpellEffect
-        - disposition (HangingDisposition): Enum determining whether the effect is harmful or beneficial to the target
-    '''
-    return effect_type in ward_effects and disposition is HangingDisposition.harmful
-
-
-async def is_damage(effect: DynamicSpellEffect) -> bool:
-    effect_type, target, disposition = await conditional_subeffect_check(effect)
-
-    if is_blade(effect_type, disposition):
-        return effect_type in buff_damage_effects and target in ally_targets
-    
-    elif is_trap(effect_type, disposition):
-        return effect_type in buff_damage_effects and target in enemy_targets
-    
-    return effect_type in damage_effects
-
-
-
-# async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
-#     effects = await card.get_spell_effects()
-#     output_effects: List[DynamicSpellEffect] = []
-
-#     for effect in effects:
-#         try:
-#             subeffects = await effect.maybe_effect_list()
-
-#         except ValueError:
-#             continue
-
-#         except Exception as e:
-#             print("ERRORED")
-#             print(e)
-
-
-
-        
+    match req:
+        case SpellType.type_damage:
+            if is_blade() or is_trap():
+                return eff_type in buff_damage_effects
             
+            return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
+        
+        case SpellType.type_aoe:
+            return target in aoe_targets
+        
+        case SpellType.type_heal:
+            if is_blade():
+                return eff_type in buff_heal_effects
+            
+            return eff_type in heal_effects and target in ally_targets.difference(_aoe_targets)
+        
+        case SpellType.type_heal_self:
+            return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team)
+        
+        case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
+            return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
+        
+        case SpellType.type_blade:
+            return is_blade() and target in ally_targets.difference(_aoe_targets)
+        
+        case SpellType.type_shield:
+            return is_ward() and target in ally_targets.difference(_aoe_targets)
+        
+        case SpellType.type_trap:
+            return is_trap() and target in enemy_targets.difference(_aoe_targets)
+        
+        case SpellType.type_enchant:
+            return target is EffectTarget.spell
+        
+        case SpellType.type_aura:
+            return all(
+                eff_type in charm_effects.union(ward_effects),
+                target is EffectTarget.self,
+                rounds > 0,
+            )
+        
+        case SpellType.type_global:
+            return all(
+                eff_type in charm_effects.union(ward_effects),
+                target is EffectTarget.target_global,
+            )
+        
+        case SpellType.type_polymorph:
+            return eff_type is SpellEffects.polymorph
+        
+        case SpellType.type_shadow:
+            return eff_type is SpellEffects.shadow_self
+        
+        case SpellType.type_shadow_creature:
+            return eff_type is SpellEffects.shadow_creature
+        
 
-async def conditional_subeffect_check(effect: DynamicSpellEffect) -> Tuple[int, int, int]:
+async def conditional_subeffect_check(effect: DynamicSpellEffect) -> DynamicSpellEffect:
+    output_effect = effect
+
     target = await effect.effect_target()
     eff_type = await effect.effect_type()
-    disposition = await effect.disposition()
 
     if target == EffectTarget.invalid_target or eff_type == SpellEffects.invalid_spell_effect:
         try:
             subeffects = await effect.maybe_effect_list()
             if len(subeffects) != 0:
-                target = await subeffects[0].effect_target()
-                eff_type = await subeffects[0].effect_type()
-                disposition = await subeffects[0].disposition()
+                output_effect = subeffects[0]
 
         except ValueError:
             pass
 
-    return (target, eff_type, disposition)
+    return output_effect
+
+
+async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
+    effects = await get_inner_card_effects(card)
+    is_aoe_req = SpellType.type_aoe in template.requirements
+    matched_reqs = 0
+    needed_matches = len(template.requirements)
+    for req in template.requirements:
+        for e in effects:
+            effect = await conditional_subeffect_check(e)
+
+            if await is_req_satisfied(effect, req, is_aoe_req):
+                matched_reqs += 1
+                break
+
+    return matched_reqs == needed_matches
 
 
 
@@ -391,157 +434,17 @@ class SprintyCombat(CombatHandler):
                 return s
         return None
 
-    async def get_cards_by_template(self, template: TemplateSpell) -> list[CombatCard]:
-        try:
-            cards = await self.get_castable_cards()
-            res = []
-            allow_aoe = SpellType.type_aoe in template.requirements
-            for c in cards:
-                fits = True
-                effects = await get_inner_card_effects(c)
-                # c_type = (await c.type_name()).lower()
-                for req in template.requirements:
-                    if req is SpellType.type_damage:
-                        for e in effects:
-                            target, _, _ = await conditional_subeffect_check(e)
-                            # if target in (EffectTarget.enemy_team,
-                            #               EffectTarget.enemy_team_all_at_once,
-                            #               EffectTarget.enemy_single) \
-                            #         and eff in (SpellEffects.damage,
-                            #                     SpellEffects.damage_over_time,
-                            #                     SpellEffects.damage_per_total_pip_power) \
-                            #         or c_type == "damage":
-                            #     if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
-                            #         break
-                            #     elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
-                            #         continue
-                            #     else:
-                            #         break
-                            if await is_damage(e):
-                                if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and not allow_aoe:
-                                    continue
+    async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
+        cards = await self.get_castable_cards()
+        res = []
+        for c in cards:
+            if await does_card_contain_reqs(c, template):
+                res.append(c)
 
-                                elif target not in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
-                                    continue
+        return res
+    
 
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_aoe:
-                        for e in effects:
-                            target, _, _ = await conditional_subeffect_check(e)
-                            if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once,
-                                        EffectTarget.friendly_team, EffectTarget.friendly_team_all_at_once):
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_trap:
-                        for e in effects:
-                            target, et, disposition = await conditional_subeffect_check(e)
-                            # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.enemy_single:
-                            #     break
-                            if is_trap(target, disposition) and et in enemy_targets:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_shield:
-                        for e in effects:
-                            target, et, disposition = await conditional_subeffect_check(e)
-                            # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
-                            #     break
-                            if is_ward(target, disposition) and et in ally_targets:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_blade:
-                        for e in effects:
-                            target, et, disposition = await conditional_subeffect_check(e)
-                            # if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
-                            #     break
-                            if is_blade(target, disposition) and et in ally_targets:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_heal:
-                        for e in await c.get_spell_effects():
-                            _, et, _ = await conditional_subeffect_check(e)
-                            if et is SpellEffects.heal:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_heal_other:
-                        for e in effects:
-                            target, et, _ = await conditional_subeffect_check(e)
-                            if (target is EffectTarget.friendly_team or target is EffectTarget.friendly_single) and et is SpellEffects.heal:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_heal_self:
-                        for e in effects:
-                            target, et, _ = await conditional_subeffect_check(e)
-                            if (target is EffectTarget.self or target is EffectTarget.friendly_team) and et is SpellEffects.heal:
-                                break
-                        else:
-                            fits = False
-                    elif req is SpellType.type_enchant:
-                        for e in effects:
-                            target, _, _ = await conditional_subeffect_check(e)
-                            if await target is EffectTarget.spell:
-                                break
-                        else:
-                            fits = False
 
-                    elif req is SpellType.type_aura:
-                        for e in effects:
-                            _, et, _ = await conditional_subeffect_check(e)
-                            # TODO: This will fail if we somehow have an invalid aura effect. Only scenario where this should happen is with a variable aura.
-                            if await e.num_rounds() > 0 and et not in charm_effects.union(ward_effects):
-                                break
-
-                        else:
-                            fits = False
-
-                    elif req is SpellType.type_global:
-                        for e in effects:
-                            target, et, _ = await conditional_subeffect_check(e)
-                            if target is EffectTarget.target_global and et not in damage_effects.union(heal_effects):
-                                break
-
-                    elif req is SpellType.type_polymorph:
-                        for e in effects:
-                            _, et, _ = await conditional_subeffect_check(e)
-                            if et is SpellEffects.polymorph:
-                                break
-
-                        else:
-                            fits = False
-
-                    elif req is SpellType.type_shadow:
-                        for e in effects:
-                            _, et, _ = await conditional_subeffect_check(e)
-                            if et is SpellEffects.shadow_self:
-                                break
-
-                        else:
-                            fits = False
-
-                    elif req is SpellType.type_shadow_creature:
-                        for e in effects:
-                            _, et, _ = await conditional_subeffect_check(e)
-                            if et is SpellEffects.shadow_creature:
-                                break
-
-                        else:
-                            fits = False
-        
-
-                    if not fits:
-                        break
-                if fits:
-                    res.append(c)
-            return res
-        except Exception as e:
-            print(e)
 
     async def get_boss_or_none(self) -> Optional[CombatMember]:
         for m in await self.get_members():
@@ -698,64 +601,64 @@ class SprintyCombat(CombatHandler):
         self.turn_adjust -= 1
 
     async def handle_round(self):
-        try:
-            await self.client.mouse_handler.activate_mouseless()
-        except wizwalker.errors.HookAlreadyActivated:
-            pass
-        
-        try:
-            self.config.attach_combat(self) # For safety. Could probably also do this in handle_combat
-
-            real_round = await self.round_number()
-            self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
-
-            if not self.had_first_round:
-                current_round = real_round - 1
-                if current_round > 0:
-                    self.turn_adjust -= current_round
-            else:
-                if self.cur_card_count >= self.prev_card_count and not self.was_pass:
-                    await self.on_fizzle()
-
-            self.was_pass = False
-            current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset)
-
-            # Issue: #3. Need to make sure it's valid
-            member: CombatMember = None
+        # try:
+        #     await self.client.mouse_handler.activate_mouseless()
+        # except wizwalker.errors.HookAlreadyActivated:
+        #     pass
+        async with self.client.mouse_handler:
             try:
-                member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
-                    self.get_client_member,
-                    timeout=2.0
-                )
-            except wizwalker.errors.ExceptionalTimeout:
-                # TODO: Maybe make this more dramatic
-                await self.fail_turn() # This is quite catastrophic. Use default fail for now
-            
-            if member is not None:
-                if await member.is_stunned():
-                    await self.fail_turn()
+                self.config.attach_combat(self) # For safety. Could probably also do this in handle_combat
+
+                real_round = await self.round_number()
+                self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
+
+                if not self.had_first_round:
+                    current_round = real_round - 1
+                    if current_round > 0:
+                        self.turn_adjust -= current_round
                 else:
-                    round_config = await self.config.get_real_round(real_round)
-                    if round_config is None:
-                        round_config = await self.config.get_relative_round(current_round)
-                    else:
-                        self.rel_round_offset -= 1
+                    if self.cur_card_count >= self.prev_card_count and not self.was_pass:
+                        await self.on_fizzle()
 
-                    if round_config is not None:
-                        for p in round_config.priorities:  # go through rounds priorities
-                            if await self.try_execute_config(p):
-                                break  # we found a working priority and managed to cast it
-                        else:
-                            print("round config fail")
-                            await self.pass_button()
-                    else:  # Very bad. Probably using empty config
-                        await self.config.handle_no_cards_given()
+                self.was_pass = False
+                current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset)
 
-            self.had_first_round = True  # might go bad on throw
-            self.prev_card_count = self.cur_card_count
-        finally:
-            if self.handle_mouseless:
+                # Issue: #3. Need to make sure it's valid
+                member: CombatMember = None
                 try:
-                    await self.client.mouse_handler.deactivate_mouseless()
-                except wizwalker.errors.HookNotActive:
-                    pass
+                    member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
+                        self.get_client_member,
+                        timeout=2.0
+                    )
+                except wizwalker.errors.ExceptionalTimeout:
+                    # TODO: Maybe make this more dramatic
+                    await self.fail_turn() # This is quite catastrophic. Use default fail for now
+                
+                if member is not None:
+                    if await member.is_stunned():
+                        await self.fail_turn()
+                    else:
+                        round_config = await self.config.get_real_round(real_round)
+                        if round_config is None:
+                            round_config = await self.config.get_relative_round(current_round)
+                        else:
+                            self.rel_round_offset -= 1
+
+                        if round_config is not None:
+                            for p in round_config.priorities:  # go through rounds priorities
+                                if await self.try_execute_config(p):
+                                    break  # we found a working priority and managed to cast it
+                            else:
+                                print("round config fail")
+                                await self.pass_button()
+                        else:  # Very bad. Probably using empty config
+                            await self.config.handle_no_cards_given()
+
+                self.had_first_round = True  # might go bad on throw
+                self.prev_card_count = self.cur_card_count
+            finally:
+                if self.handle_mouseless:
+                    try:
+                        await self.client.mouse_handler.deactivate_mouseless()
+                    except wizwalker.errors.HookNotActive:
+                        pass
