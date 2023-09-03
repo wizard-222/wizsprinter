@@ -650,6 +650,7 @@ class SprintyCombat(CombatHandler):
             return False
 
         if cur_card == "pass":
+            print("declared pass fail")
             await self.pass_button()
             return True
 
@@ -692,6 +693,7 @@ class SprintyCombat(CombatHandler):
 
     async def fail_turn(self):
         self.turn_adjust -= 1
+        print("fail turn")
         await self.pass_button()
 
     async def on_fizzle(self):
@@ -746,6 +748,7 @@ class SprintyCombat(CombatHandler):
                             if await self.try_execute_config(p):
                                 break  # we found a working priority and managed to cast it
                         else:
+                            print("round config fail")
                             await self.pass_button()
                     else:  # Very bad. Probably using empty config
                         await self.config.handle_no_cards_given()
