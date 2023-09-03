@@ -161,7 +161,7 @@ def is_trap(effect_type: SpellEffects, disposition: HangingDisposition) -> bool:
     return effect_type in ward_effects and disposition is HangingDisposition.harmful
 
 
-async def is_damage(effect: DynamicSpellEffect, allow_aoe: bool = True) -> bool:
+async def is_damage(effect: DynamicSpellEffect) -> bool:
     effect_type, target, disposition = await conditional_subeffect_check(effect)
 
     if is_blade(effect_type, disposition):
@@ -170,9 +170,7 @@ async def is_damage(effect: DynamicSpellEffect, allow_aoe: bool = True) -> bool:
     elif is_trap(effect_type, disposition):
         return effect_type in buff_damage_effects and target in enemy_targets
     
-    is_aoe = target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once)
-    
-    return effect_type in damage_effects and (allow_aoe and is_aoe or not allow_aoe and target in enemy_targets)
+    return effect_type in damage_effects
 
 
 
@@ -421,6 +419,9 @@ class SprintyCombat(CombatHandler):
                             #         break
                             if await is_damage(e):
                                 if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and not allow_aoe:
+                                    continue
+
+                                elif target not in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
                                     continue
 
                                 break
