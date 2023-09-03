@@ -394,153 +394,156 @@ class SprintyCombat(CombatHandler):
         return None
 
     async def get_cards_by_template(self, template: TemplateSpell) -> list[CombatCard]:
-        cards = await self.get_castable_cards()
-        res = []
-        allow_aoe = SpellType.type_aoe in template.requirements
-        for c in cards:
-            fits = True
-            effects = await get_inner_card_effects(c)
-            # c_type = (await c.type_name()).lower()
-            for req in template.requirements:
-                if req is SpellType.type_damage:
-                    for e in effects:
-                        target, _, _ = await conditional_subeffect_check(e)
-                        # if target in (EffectTarget.enemy_team,
-                        #               EffectTarget.enemy_team_all_at_once,
-                        #               EffectTarget.enemy_single) \
-                        #         and eff in (SpellEffects.damage,
-                        #                     SpellEffects.damage_over_time,
-                        #                     SpellEffects.damage_per_total_pip_power) \
-                        #         or c_type == "damage":
-                        #     if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
-                        #         break
-                        #     elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
-                        #         continue
-                        #     else:
-                        #         break
-                        if await is_damage(e):
-                            if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
+        try:
+            cards = await self.get_castable_cards()
+            res = []
+            allow_aoe = SpellType.type_aoe in template.requirements
+            for c in cards:
+                fits = True
+                effects = await get_inner_card_effects(c)
+                # c_type = (await c.type_name()).lower()
+                for req in template.requirements:
+                    if req is SpellType.type_damage:
+                        for e in effects:
+                            target, _, _ = await conditional_subeffect_check(e)
+                            # if target in (EffectTarget.enemy_team,
+                            #               EffectTarget.enemy_team_all_at_once,
+                            #               EffectTarget.enemy_single) \
+                            #         and eff in (SpellEffects.damage,
+                            #                     SpellEffects.damage_over_time,
+                            #                     SpellEffects.damage_per_total_pip_power) \
+                            #         or c_type == "damage":
+                            #     if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
+                            #         break
+                            #     elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
+                            #         continue
+                            #     else:
+                            #         break
+                            if await is_damage(e):
+                                if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once) and allow_aoe:
+                                    break
+
+                                elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
+                                    continue
+
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_aoe:
+                        for e in effects:
+                            target, _, _ = await conditional_subeffect_check(e)
+                            if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once,
+                                        EffectTarget.friendly_team, EffectTarget.friendly_team_all_at_once):
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_trap:
+                        for e in effects:
+                            target, et, disposition = await conditional_subeffect_check(e)
+                            # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.enemy_single:
+                            #     break
+                            if is_trap(target, disposition) and et in enemy_targets:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_shield:
+                        for e in effects:
+                            target, et, disposition = await conditional_subeffect_check(e)
+                            # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
+                            #     break
+                            if is_ward(target, disposition) and et in ally_targets:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_blade:
+                        for e in effects:
+                            target, et, disposition = await conditional_subeffect_check(e)
+                            # if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
+                            #     break
+                            if is_blade(target, disposition) and et in ally_targets:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_heal:
+                        for e in await c.get_spell_effects():
+                            _, et, _ = await conditional_subeffect_check(e)
+                            if et is SpellEffects.heal:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_heal_other:
+                        for e in effects:
+                            target, et, _ = await conditional_subeffect_check(e)
+                            if (target is EffectTarget.friendly_team or target is EffectTarget.friendly_single) and et is SpellEffects.heal:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_heal_self:
+                        for e in effects:
+                            target, et, _ = await conditional_subeffect_check(e)
+                            if (target is EffectTarget.self or target is EffectTarget.friendly_team) and et is SpellEffects.heal:
+                                break
+                        else:
+                            fits = False
+                    elif req is SpellType.type_enchant:
+                        for e in effects:
+                            target, _, _ = await conditional_subeffect_check(e)
+                            if await target is EffectTarget.spell:
+                                break
+                        else:
+                            fits = False
+
+                    elif req is SpellType.type_aura:
+                        for e in effects:
+                            _, et, _ = await conditional_subeffect_check(e)
+                            # TODO: This will fail if we somehow have an invalid aura effect. Only scenario where this should happen is with a variable aura.
+                            if await e.num_rounds() > 0 and et not in charm_effects.union(ward_effects):
                                 break
 
-                            elif target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once):
-                                continue
+                        else:
+                            fits = False
 
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_aoe:
-                    for e in effects:
-                        target, _, _ = await conditional_subeffect_check(e)
-                        if target in (EffectTarget.enemy_team, EffectTarget.enemy_team_all_at_once,
-                                      EffectTarget.friendly_team, EffectTarget.friendly_team_all_at_once):
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_trap:
-                    for e in effects:
-                        target, et, disposition = await conditional_subeffect_check(e)
-                        # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.enemy_single:
-                        #     break
-                        if is_trap(target, disposition) and et in enemy_targets:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_shield:
-                    for e in effects:
-                        target, et, disposition = await conditional_subeffect_check(e)
-                        # if et is SpellEffects.modify_incoming_damage and target is EffectTarget.friendly_single:
-                        #     break
-                        if is_ward(target, disposition) and et in ally_targets:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_blade:
-                    for e in effects:
-                        target, et, disposition = await conditional_subeffect_check(e)
-                        # if et is SpellEffects.modify_outgoing_damage and target is EffectTarget.friendly_single:
-                        #     break
-                        if is_blade(target, disposition) and et in ally_targets:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_heal:
-                    for e in await c.get_spell_effects():
-                        _, et, _ = await conditional_subeffect_check(e)
-                        if et is SpellEffects.heal:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_heal_other:
-                    for e in effects:
-                        target, et, _ = await conditional_subeffect_check(e)
-                        if (target is EffectTarget.friendly_team or target is EffectTarget.friendly_single) and et is SpellEffects.heal:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_heal_self:
-                    for e in effects:
-                        target, et, _ = await conditional_subeffect_check(e)
-                        if (target is EffectTarget.self or target is EffectTarget.friendly_team) and et is SpellEffects.heal:
-                            break
-                    else:
-                        fits = False
-                elif req is SpellType.type_enchant:
-                    for e in effects:
-                        target, _, _ = await conditional_subeffect_check(e)
-                        if await target is EffectTarget.spell:
-                            break
-                    else:
-                        fits = False
+                    elif req is SpellType.type_global:
+                        for e in effects:
+                            target, et, _ = await conditional_subeffect_check(e)
+                            if target is EffectTarget.target_global and et not in damage_effects.union(heal_effects):
+                                break
 
-                elif req is SpellType.type_aura:
-                    for e in effects:
-                        _, et, _ = await conditional_subeffect_check(e)
-                        # TODO: This will fail if we somehow have an invalid aura effect. Only scenario where this should happen is with a variable aura.
-                        if await e.num_rounds() > 0 and et not in charm_effects.union(ward_effects):
-                            break
+                    elif req is SpellType.type_polymorph:
+                        for e in effects:
+                            _, et, _ = await conditional_subeffect_check(e)
+                            if et is SpellEffects.polymorph:
+                                break
 
-                    else:
-                        fits = False
+                        else:
+                            fits = False
 
-                elif req is SpellType.type_global:
-                    for e in effects:
-                        target, et, _ = await conditional_subeffect_check(e)
-                        if target is EffectTarget.target_global and et not in damage_effects.union(heal_effects):
-                            break
+                    elif req is SpellType.type_shadow:
+                        for e in effects:
+                            _, et, _ = await conditional_subeffect_check(e)
+                            if et is SpellEffects.shadow_self:
+                                break
 
-                elif req is SpellType.type_polymorph:
-                    for e in effects:
-                        _, et, _ = await conditional_subeffect_check(e)
-                        if et is SpellEffects.polymorph:
-                            break
+                        else:
+                            fits = False
 
-                    else:
-                        fits = False
+                    elif req is SpellType.type_shadow_creature:
+                        for e in effects:
+                            _, et, _ = await conditional_subeffect_check(e)
+                            if et is SpellEffects.shadow_creature:
+                                break
 
-                elif req is SpellType.type_shadow:
-                    for e in effects:
-                        _, et, _ = await conditional_subeffect_check(e)
-                        if et is SpellEffects.shadow_self:
-                            break
+                        else:
+                            fits = False
+        
 
-                    else:
-                        fits = False
-
-                elif req is SpellType.type_shadow_creature:
-                    for e in effects:
-                        _, et, _ = await conditional_subeffect_check(e)
-                        if et is SpellEffects.shadow_creature:
-                            break
-
-                    else:
-                        fits = False
-    
-
-                if not fits:
-                    break
-            if fits:
-                res.append(c)
-        return res
+                    if not fits:
+                        break
+                if fits:
+                    res.append(c)
+            return res
+        except Exception as e:
+            print(e)
 
     async def get_boss_or_none(self) -> Optional[CombatMember]:
         for m in await self.get_members():
