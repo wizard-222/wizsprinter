@@ -168,7 +168,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
     
     print(req)
     print(eff_type)
-    print(disp)
+    print(param)
     print(target)
     print(rounds)
 
