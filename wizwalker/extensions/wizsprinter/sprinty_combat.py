@@ -173,10 +173,10 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             target is EffectTarget.target_global,
         ))
     
-    def hits_enemy():
+    def hits_enemy() -> bool:
         return target in enemy_targets.difference(_aoe_targets)
     
-    def hits_ally():
+    def hits_ally() -> bool:
         return target in ally_targets.difference(_aoe_targets)
     
     def is_effect_beneficial(neg_is_good: bool = False) -> bool:
@@ -187,11 +187,17 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return (hits_ally() and param < 0) or (hits_enemy() and param > 0)
         
         return (hits_ally() and param > 0) or (hits_enemy() and param < 0)
+    
 
+    def is_damage() -> bool:
+        return eff_type in damage_effects and hits_enemy() and is_effect_beneficial(True)
+
+    if is_damage() and SpellType.type_damage not in template.requirements:
+        return False
 
     match req:
         case SpellType.type_damage:
-            return eff_type in damage_effects and hits_enemy() and is_effect_beneficial(True)
+            return is_damage()
         
         case SpellType.type_inc_damage:
             return eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True)
