@@ -134,7 +134,6 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
 
 
     def is_blade() -> bool:
-        print("This ran")
         return all((
             eff_type in charm_effects,
             target in ally_targets.difference(_aoe_targets),
@@ -174,7 +173,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
         ))
     
     def is_basic_hanging_effect():
-        return any(is_blade(), is_charm(), is_ward(), is_trap(), is_aura())
+        return any((is_blade(), is_charm(), is_ward(), is_trap(), is_aura()))
     
     print(req)
     print(eff_type)
