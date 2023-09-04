@@ -634,59 +634,50 @@ class SprintyCombat(CombatHandler):
         # except wizwalker.errors.HookAlreadyActivated:
         #     pass
         async with self.client.mouse_handler:
-            try:
-                self.config.attach_combat(self) # For safety. Could probably also do this in handle_comba
+            self.config.attach_combat(self) # For safety. Could probably also do this in handle_comba
 
-                real_round = await self.round_number()
-                self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
-
-                if not self.had_first_round:
-                    current_round = real_round - 1
-                    if current_round > 0:
-                        self.turn_adjust -= current_round
-                else:
-                    if self.cur_card_count >= self.prev_card_count and not self.was_pass:
-                        await self.on_fizzle()
-
-                self.was_pass = False
-                current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset)
-
-                # Issue: #3. Need to make sure it's valid
-                member: CombatMember = None
-                try:
-                    member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
-                        self.get_client_member,
-                        timeout=2.0
-                    )
-                except wizwalker.errors.ExceptionalTimeout:
-                    # TODO: Maybe make this more dramatic
-                    await self.fail_turn() # This is quite catastrophic. Use default fail for now
+            real_round = await self.round_number()
+            self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
                 
-                if member is not None:
-                    if await member.is_stunned():
-                        await self.fail_turn()
+            if not self.had_first_round:
+                current_round = real_round - 1
+                if current_round > 0:
+                    self.turn_adjust -= current_round
+            else:
+                if self.cur_card_count >= self.prev_card_count and not self.was_pass:
+                    await self.on_fizzle()
+            self.was_pass = False
+            current_round = (real_round - 1 + self.turn_adjust + self.rel_round_offset)
+                        
+            # Issue: #3. Need to make sure it's valid
+            member: CombatMember = None
+            try:
+                member = await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
+                    self.get_client_member,
+                    timeout=2.0
+                )
+            except wizwalker.errors.ExceptionalTimeout:
+                # TODO: Maybe make this more dramatic
+                await self.fail_turn() # This is quite catastrophic. Use default fail for now
+            
+            if member is not None:
+                if await member.is_stunned():
+                    await self.fail_turn()
+                else:
+                    round_config = await self.config.get_real_round(real_round)
+                    if round_config is None:
+                        round_config = await self.config.get_relative_round(current_round)
                     else:
-                        round_config = await self.config.get_real_round(real_round)
-                        if round_config is None:
-                            round_config = await self.config.get_relative_round(current_round)
+                        self.rel_round_offset -= 1
+                    if round_config is not None:
+                        for p in round_config.priorities:  # go through rounds priorities
+                            if await self.try_execute_config(p):
+                                break  # we found a working priority and managed to cast it
                         else:
-                            self.rel_round_offset -= 1
-
-                        if round_config is not None:
-                            for p in round_config.priorities:  # go through rounds priorities
-                                if await self.try_execute_config(p):
-                                    break  # we found a working priority and managed to cast it
-                            else:
-                                print("round config fail")
-                                await self.pass_button()
-                        else:  # Very bad. Probably using empty config
-                            await self.config.handle_no_cards_given()
+                            print("round config fail")
+                            await self.pass_button()
+                    else:  # Very bad. Probably using empty config
+                        await self.config.handle_no_cards_given()
 
                 self.had_first_round = True  # might go bad on throw
                 self.prev_card_count = self.cur_card_count
-            finally:
-                if self.handle_mouseless:
-                    try:
-                        await self.client.mouse_handler.deactivate_mouseless()
-                    except wizwalker.errors.HookNotActive:
-                        pass
