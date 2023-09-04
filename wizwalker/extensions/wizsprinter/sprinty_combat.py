@@ -241,15 +241,18 @@ async def conditional_subeffect_check(effect: DynamicSpellEffect) -> DynamicSpel
 
 
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
+    print(2)
     effects = await get_inner_card_effects(card)
+    print(3)
     is_aoe_req = SpellType.type_aoe in template.requirements
     matched_reqs = 0
     needed_matches = len(template.requirements)
     for req in template.requirements:
         for e in effects:
             effect = await conditional_subeffect_check(e)
-
+            print(4)
             if await is_req_satisfied(effect, req, is_aoe_req):
+                print(5)
                 matched_reqs += 1
                 break
 
@@ -435,6 +438,7 @@ class SprintyCombat(CombatHandler):
         return None
 
     async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
+        print(1)
         cards = await self.get_castable_cards()
         res = []
         for c in cards:
