@@ -135,36 +135,36 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
 
     def is_blade() -> bool:
         print("This ran")
-        return all(
+        return all((
             eff_type in charm_effects,
             disp is HangingDisposition.beneficial,
             target in ally_targets,
             rounds == 0,
-        )
+        ))
 
     def is_charm() -> bool:
-        return all(
+        return all((
             eff_type in charm_effects,
             disp is HangingDisposition.harmful,
             target in enemy_targets,
             rounds == 0,
-        )
+        ))
 
     def is_ward() -> bool:
-        return all(
+        return all((
             eff_type in ward_effects,
             disp is HangingDisposition.beneficial,
             target in ally_targets,
             rounds == 0,
-        )
+        ))
 
     def is_trap() -> bool:
-        return all(
+        return all((
             eff_type in ward_effects,
             disp is HangingDisposition.harmful,
             target in enemy_targets,
             rounds == 0,
-        )
+        ))
     
     print(req)
 
