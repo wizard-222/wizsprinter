@@ -204,9 +204,11 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
 
     match req:
         case SpellType.type_damage:
-            if is_basic_hanging_effect() or SpellType.type_enchant in template.requirements:
+            if is_basic_hanging_effect():
                 return eff_type in buff_damage_effects
 
+            if SpellType.type_enchant in template.requirements:
+                return eff_type in damage_enchant_effects
             
             return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
         
@@ -217,12 +219,21 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             if is_basic_hanging_effect():
                 return eff_type in buff_heal_effects
             
+            if SpellType.type_enchant in template.requirements:
+                return eff_type in heal_enchant_effects
+            
             return eff_type in heal_effects and target in ally_targets.difference(_aoe_targets)
         
         case SpellType.type_heal_self:
+            if SpellType.type_enchant in template.requirements:
+                return eff_type in heal_enchant_effects
+
             return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team)
         
         case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
+            if SpellType.type_enchant in template.requirements:
+                return eff_type in heal_enchant_effects
+
             return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
         
         case SpellType.type_blade:
@@ -238,12 +249,6 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return is_trap() and target in enemy_targets.difference(_aoe_targets)
         
         case SpellType.type_enchant:
-            if SpellType.type_damage in template.requirements:
-                return eff_type in damage_enchant_effects
-            
-            elif any((st in template.requirements for st in heal_spell_types)):
-                return eff_type in heal_enchant_effects
-
             return target is EffectTarget.spell
         
         case SpellType.type_aura:
