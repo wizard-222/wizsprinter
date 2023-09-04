@@ -209,76 +209,79 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
     if is_damage() and SpellType.type_damage not in template.requirements:
         return ReqSatisfaction.reject_card
 
+    is_satisfied = True
     match req:
         case SpellType.type_damage:
-            return get_req_status(is_damage())
+            is_satisfied = is_damage()
         
         case SpellType.type_inc_damage:
-            return get_req_status(eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True))
+            is_satisfied = eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True)
 
         case SpellType.type_out_damage:
-            return get_req_status(eff_type in (SpellEffects.modify_outgoing_damage, SpellEffects.modify_outgoing_damage_flat) and is_effect_beneficial())
+            is_satisfied = eff_type in (SpellEffects.modify_outgoing_damage, SpellEffects.modify_outgoing_damage_flat) and is_effect_beneficial()
 
         case SpellType.type_aoe:
-            return get_req_status(target in aoe_targets)
+            is_satisfied = target in aoe_targets
         
         case SpellType.type_inc_heal:
-            return get_req_status(eff_type in (SpellEffects.modify_incoming_heal, SpellEffects.modify_incoming_heal_flat, SpellEffects.modify_incoming_heal_over_time) and is_effect_beneficial())
+            is_satisfied = eff_type in (SpellEffects.modify_incoming_heal, SpellEffects.modify_incoming_heal_flat, SpellEffects.modify_incoming_heal_over_time) and is_effect_beneficial()
 
         case SpellType.type_out_heal:
-            return get_req_status(eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial())
+            is_satisfied = eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial()
         
         case SpellType.type_heal:
-            return get_req_status(eff_type in heal_effects and hits_ally() and is_effect_beneficial())
+            is_satisfied = eff_type in heal_effects and hits_ally() and is_effect_beneficial()
         
         case SpellType.type_heal_self:
-            return get_req_status(eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial())
+            is_satisfied = eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial()
         
         case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
-            return get_req_status(eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me) and is_effect_beneficial())
+            is_satisfied = eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me) and is_effect_beneficial()
         
         case SpellType.type_blade:
-            return get_req_status(is_blade() and hits_ally())
+            is_satisfied = is_blade() and hits_ally()
         
         case SpellType.type_charm:
-            return get_req_status(is_charm() and hits_enemy())
+            is_satisfied = is_charm() and hits_enemy()
 
         case SpellType.type_ward:
-            return get_req_status(is_ward() and hits_ally())
+            is_satisfied = is_ward() and hits_ally()
         
         case SpellType.type_trap:
-            return get_req_status(is_trap() and hits_enemy())
+            is_satisfied = is_trap() and hits_enemy()
         
         case SpellType.type_enchant:
-            return get_req_status(target is EffectTarget.spell)
+            is_satisfied = target is EffectTarget.spell
         
         case SpellType.type_aura:
-            return get_req_status(is_aura())
+            is_satisfied = is_aura()
 
         case SpellType.type_global:
-            return get_req_status(is_global())
+            is_satisfied = is_global()
         
         case SpellType.type_polymorph:
-            return get_req_status(eff_type is SpellEffects.polymorph)
+            is_satisfied = eff_type is SpellEffects.polymorph
         
         case SpellType.type_shadow:
-            return get_req_status(eff_type is SpellEffects.shadow_self)
+            is_satisfied = eff_type is SpellEffects.shadow_self
         
         case SpellType.type_shadow_creature:
-            return get_req_status(eff_type is SpellEffects.shadow_creature)
+            is_satisfied = eff_type is SpellEffects.shadow_creature
         
         case SpellType.type_pierce:
-            return get_req_status(eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial())
+            is_satisfied = eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial()
         
         case SpellType.type_prism:
-            return get_req_status(eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type))
+            is_satisfied = eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type)
         
         case SpellType.type_dispel:
-            return get_req_status(eff_type is SpellEffects.dispel)
+            is_satisfied = eff_type is SpellEffects.dispel
         
         case _:
             # This should never happen
-            return ReqSatisfaction.false
+            is_satisfied = ReqSatisfaction.false
+
+    return get_req_status(is_satisfied)
         
 
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
