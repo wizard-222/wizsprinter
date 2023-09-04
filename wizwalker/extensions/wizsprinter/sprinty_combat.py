@@ -205,8 +205,14 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
 
     def is_damage() -> bool:
         return eff_type in damage_effects and hits_enemy() and is_effect_beneficial(True)
+    
+    def is_heal() -> bool:
+        return eff_type in heal_effects and hits_ally() and is_effect_beneficial()
 
     if is_damage() and SpellType.type_damage not in template.requirements:
+        return ReqSatisfaction.reject_card
+    
+    if is_heal() and SpellType.type_heal not in template.requirements:
         return ReqSatisfaction.reject_card
 
     is_satisfied = True
@@ -230,7 +236,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             is_satisfied = eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial()
         
         case SpellType.type_heal:
-            is_satisfied = eff_type in heal_effects and hits_ally() and is_effect_beneficial()
+            is_satisfied = is_heal()
         
         case SpellType.type_heal_self:
             is_satisfied = eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial()
