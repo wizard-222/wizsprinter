@@ -173,6 +173,8 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         ))
     
     def is_global() -> bool:
+        print(eff_type)
+        print(param)
         return all((
             eff_type in charm_effects.union(ward_effects),
             target is EffectTarget.target_global,
