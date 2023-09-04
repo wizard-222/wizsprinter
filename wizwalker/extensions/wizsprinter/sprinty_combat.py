@@ -204,7 +204,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
 
     match req:
         case SpellType.type_damage:
-            return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
+            return eff_type in damage_effects and hits_enemy() and is_effect_beneficial(True)
         
         case SpellType.type_inc_damage:
             return eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True)
@@ -222,28 +222,25 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial()
         
         case SpellType.type_heal:
-            if is_basic_hanging_effect():
-                return eff_type in buff_heal_effects
-
-            return eff_type in heal_effects and target in hits_ally()
+            return eff_type in heal_effects and hits_ally() and is_effect_beneficial()
         
         case SpellType.type_heal_self:
-            return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team)
+            return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial()
         
         case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
-            return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
+            return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me) and is_effect_beneficial()
         
         case SpellType.type_blade:
-            return is_blade() and target in hits_ally()
+            return is_blade() and hits_ally()
         
         case SpellType.type_charm:
-            return is_charm() and target in hits_enemy()
+            return is_charm() and hits_enemy()
 
-        case SpellType.type_shield:
-            return is_ward() and target in hits_ally()
+        case SpellType.type_ward:
+            return is_ward() and hits_ally()
         
         case SpellType.type_trap:
-            return is_trap() and target in hits_enemy()
+            return is_trap() and hits_enemy()
         
         case SpellType.type_enchant:
             return target is EffectTarget.spell

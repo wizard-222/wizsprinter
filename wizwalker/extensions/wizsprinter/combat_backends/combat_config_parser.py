@@ -38,7 +38,7 @@ def get_sprinty_grammar():
             auto: _spaced{"auto"}
             
             any_spell: _spaced{"any"} _less_than spell_type (_and spell_type)* _greater_than
-            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_charm | spell_shield | spell_trap | spell_enchant | spell_aura | spell_global | spell_polymorph | spell_shadow | spell_shadow_creature | spell_pierce | spell_prism | spell_dispel | spell_inc_damage | spell_out_damage | spell_inc_heal | spell_out_heal
+            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_charm | spell_ward | spell_trap | spell_enchant | spell_aura | spell_global | spell_polymorph | spell_shadow | spell_shadow_creature | spell_pierce | spell_prism | spell_dispel | spell_inc_damage | spell_out_damage | spell_inc_heal | spell_out_heal
             spell_damage: _spaced{"damage"}
             spell_aoe: _spaced{"aoe"}
             spell_heal: _spaced{"heal"}
@@ -46,7 +46,7 @@ def get_sprinty_grammar():
             spell_heal_other: spell_heal _spaced{"other"}
             spell_blade: _spaced{"blade"}
             spell_charm: _spaced{"charm"}
-            spell_shield: _spaced{"shield"}
+            spell_ward: _spaced{"ward"}
             spell_trap: _spaced{"trap"}
             spell_enchant: _spaced{"enchant"}
             spell_aura: _spaced{"aura"}
@@ -190,8 +190,8 @@ class TreeToConfig(Transformer):
     def spell_charm(self, _):
         return SpellType.type_charm
 
-    def spell_shield(self, _):
-        return SpellType.type_shield
+    def spell_ward(self, _):
+        return SpellType.type_ward
 
     def spell_trap(self, _):
         return SpellType.type_trap

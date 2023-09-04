@@ -22,7 +22,7 @@ class SpellType(Enum):
     type_heal_other = auto()
     type_blade = auto()
     type_charm = auto()
-    type_shield = auto()
+    type_ward = auto()
     type_trap = auto()
     type_enchant = auto()
     #Slack added types
