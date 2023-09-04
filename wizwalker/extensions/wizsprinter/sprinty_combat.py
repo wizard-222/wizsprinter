@@ -636,7 +636,9 @@ class SprintyCombat(CombatHandler):
         #     pass
         async with self.client.mouse_handler:
             try:
-                self.config.attach_combat(self) # For safety. Could probably also do this in handle_combat
+                self.config.attach_combat(self) # For safety. Could probably also do this in handle_comba
+                # Attempt to fix second turn always breaking
+                await self.wait_for_planning_phase(1.0)
 
                 real_round = await self.round_number()
                 self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
