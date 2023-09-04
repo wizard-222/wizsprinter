@@ -6,7 +6,7 @@ from wizwalker.combat import CombatHandler
 from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects, DynamicSpellEffect
-from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect, HangingDisposition
+from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect, HangingDisposition, RandomSpellEffect, RandomPerTargetSpellEffect, VariableSpellEffect, EffectListSpellEffect, ShadowSpellEffect
 
 from .combat_backends.combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
@@ -46,6 +46,7 @@ damage_effects = {
     SpellEffects.damage_no_crit,
     SpellEffects.damage_over_time,
     SpellEffects.damage_per_total_pip_power,
+    SpellEffects.deferred_damage,
     SpellEffects.instant_kill,
     SpellEffects.divide_damage,
     SpellEffects.steal_health,
@@ -126,8 +127,6 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
     target = await effect.effect_target()
     param = await effect.effect_param()
     rounds = await effect.num_rounds()
-    if target is EffectTarget.target_global:
-        print(f"ROUNDS: {rounds}")
 
     _aoe_targets = aoe_targets
     if not allow_aoe:
@@ -177,16 +176,6 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         return all((
             eff_type in charm_effects.union(ward_effects),
             target is EffectTarget.target_global,
-        ))
-    
-    def is_basic_hanging_effect():
-        return any((
-            is_blade() and SpellType.type_blade in template.requirements,
-            is_charm() and SpellType.type_charm in template.requirements,
-            is_ward() and SpellType.type_shield in template.requirements,
-            is_trap() and SpellType.type_trap in template.requirements,
-            is_aura() and SpellType.type_aura in template.requirements,
-            is_global() and SpellType.type_global in template.requirements,
         ))
     
     def hits_enemy():
@@ -274,36 +263,49 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return False
         
 
-async def conditional_subeffect_check(effect: DynamicSpellEffect) -> DynamicSpellEffect:
-    output_effect = effect
-
+async def collapse_subeffects(effect: DynamicSpellEffect) -> List[DynamicSpellEffect]:
     target = await effect.effect_target()
     eff_type = await effect.effect_type()
 
-    if target == EffectTarget.invalid_target or eff_type == SpellEffects.invalid_spell_effect:
-        try:
-            subeffects = await effect.maybe_effect_list()
-            if len(subeffects) != 0:
-                output_effect = subeffects[0]
+    if target != EffectTarget.invalid_target and eff_type != SpellEffects.invalid_spell_effect:
+        return [effect]
+    
+    
+    spell_effect_type = type(spell_effect_type)
+    if issubclass(spell_effect_type, HangingConversionSpellEffect):
+        return await effect.output_effect()
+    
+    if issubclass(spell_effect_type, ConditionalSpellEffect):
+        elements = await effect.elements()
+        output_effects = []
+        for elem in elements:
+            output_effects.append(await elem.effect())
+        
+        return output_effects
+    
+    if issubclass(spell_effect_type, CompoundSpellEffect):
+        return await effect.effect_list()
+    
+    return [effect]
 
-        except ValueError:
-            pass
 
-    return output_effect
+
+
 
 
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
-    print(2)
     effects = await get_inner_card_effects(card)
-    print(3)
     is_aoe_req = SpellType.type_aoe in template.requirements
     matched_reqs = 0
     needed_matches = len(template.requirements)
+    collapsed_effects = []
+    for e in effects:
+        collapsed_effects += await collapse_subeffects(e)
+
     for req in template.requirements:
-        for e in effects:
-            effect = await conditional_subeffect_check(e)
+        for c in collapsed_effects:
             print(4)
-            if await is_req_satisfied(effect, req, template, is_aoe_req):
+            if await is_req_satisfied(c, req, template, is_aoe_req):
                 print(5)
                 matched_reqs += 1
                 break
