@@ -27,6 +27,9 @@ class SpellType(Enum):
     type_polymorph = auto()
     type_shadow = auto()
     type_shadow_creature = auto()
+    type_pierce = auto()
+    type_prism = auto()
+    type_dispel = auto()
 
 
 class Spell:

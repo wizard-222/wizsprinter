@@ -38,13 +38,14 @@ def get_sprinty_grammar():
             auto: _spaced{"auto"}
             
             any_spell: _spaced{"any"} _less_than spell_type (_and spell_type)* _greater_than
-            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_shield | spell_trap | spell_enchant | spell_aura | spell_global | spell_polymorph | spell_shadow | spell_shadow_creature
+            spell_type: spell_damage | spell_aoe | spell_heal_self | spell_heal_other | spell_heal | spell_blade | spell_charm | spell_shield | spell_trap | spell_enchant | spell_aura | spell_global | spell_polymorph | spell_shadow | spell_shadow_creature | spell_pierce | spell_prism | spell_dispel
             spell_damage: _spaced{"damage"}
             spell_aoe: _spaced{"aoe"}
             spell_heal: _spaced{"heal"}
             spell_heal_self: spell_heal _spaced{"self"}
             spell_heal_other: spell_heal _spaced{"other"}
             spell_blade: _spaced{"blade"}
+            spell_charm: _spaced{"charm"}
             spell_shield: _spaced{"shield"}
             spell_trap: _spaced{"trap"}
             spell_enchant: _spaced{"enchant"}
@@ -53,6 +54,9 @@ def get_sprinty_grammar():
             spell_polymorph: _spaced{"polymorph"}
             spell_shadow: _spaced{"shadow"}
             spell_shadow_creature: _spaced{"shadow_creature"}
+            spell_pierce: _spaced{"pierce"}
+            spell_prism: _spaced{"prism"}
+            spell_dispel: _spaced{"dispel"}
             
             expression: INT
             
@@ -178,6 +182,9 @@ class TreeToConfig(Transformer):
 
     def spell_blade(self, _):
         return SpellType.type_blade
+    
+    def spell_charm(self, _):
+        return SpellType.type_charm
 
     def spell_shield(self, _):
         return SpellType.type_shield
@@ -208,6 +215,15 @@ class TreeToConfig(Transformer):
     
     def spell_shadow_creature(self, _):
         return SpellType.type_shadow_creature
+    
+    def spell_pierce(self, _):
+        return SpellType.type_pierce
+    
+    def spell_prism(self, _):
+        return SpellType.type_prism
+    
+    def spell_dispel(self, _):
+        return SpellType.type_dispel
 
     INT = int
 

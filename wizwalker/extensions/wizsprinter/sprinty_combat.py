@@ -57,7 +57,16 @@ buff_damage_effects = {
     SpellEffects.modify_incoming_damage_flat,
     SpellEffects.modify_incoming_damage_over_time,
     SpellEffects.modify_outgoing_damage,
-    SpellEffects.modify_outgoing_damage_flat,
+    SpellEffects.modify_outgoing_damage_flat
+}
+
+damage_enchant_effects = {
+    SpellEffects.modify_card_damage,
+    SpellEffects.modify_card_damage_by_rank
+}
+
+heal_enchant_effects = {
+    SpellEffects.modify_card_heal
 }
 
 buff_heal_effects = {
@@ -118,6 +127,12 @@ aoe_targets = {
     EffectTarget.enemy_team_all_at_once,
     EffectTarget.friendly_team,
     EffectTarget.friendly_team_all_at_once
+}
+
+heal_spell_types = {
+    SpellType.type_heal,
+    SpellType.type_heal_other,
+    SpellType.type_heal_self
 }
 
 
@@ -189,8 +204,9 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
 
     match req:
         case SpellType.type_damage:
-            if is_basic_hanging_effect():
+            if is_basic_hanging_effect() or SpellType.type_enchant in template.requirements:
                 return eff_type in buff_damage_effects
+
             
             return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
         
@@ -222,6 +238,12 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return is_trap() and target in enemy_targets.difference(_aoe_targets)
         
         case SpellType.type_enchant:
+            if SpellType.type_damage in template.requirements:
+                return eff_type in damage_enchant_effects
+            
+            elif any((st in template.requirements for st in heal_spell_types)):
+                return eff_type in heal_enchant_effects
+
             return target is EffectTarget.spell
         
         case SpellType.type_aura:
@@ -240,6 +262,19 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         
         case SpellType.type_shadow_creature:
             return eff_type is SpellEffects.shadow_creature
+        
+        case SpellType.type_pierce:
+            return eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing)
+        
+        case SpellType.type_prism:
+            return eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type)
+        
+        case SpellType.type_dispel:
+            return eff_type is SpellEffects.dispel
+        
+        case _:
+            # This should never happen
+            return False
         
 
 async def conditional_subeffect_check(effect: DynamicSpellEffect) -> DynamicSpellEffect:
