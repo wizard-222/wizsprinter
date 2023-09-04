@@ -17,26 +17,21 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     effects = await card.get_spell_effects()
     output_effects: List[DynamicSpellEffect] = []
 
-    try: 
-        for effect in effects:
-            effect_class = type(effect)
-            if issubclass(CompoundSpellEffect, effect_class):
-                output_effects += await effect.effect_list()
 
-            elif issubclass(effect_class, ConditionalSpellEffect):
-                print("This activated")
-                print(type(effect))
-                issubclass(effect_class, ConditionalSpellEffect)
-                output_effects += [await elem.effect() for elem in await effect.elements()]
+    for effect in effects:
+        effect_class = type(effect)
+        if issubclass(effect_class, CompoundSpellEffect):
+            output_effects += await effect.effect_list()
 
-            elif issubclass(effect_class, HangingConversionSpellEffect):
-                output_effects += await effect.output_effect()
+        elif issubclass(effect_class, ConditionalSpellEffect):
+            issubclass(effect_class, ConditionalSpellEffect)
+            output_effects += [await elem.effect() for elem in await effect.elements()]
 
-            else:
-                output_effects.append(effect)
+        elif issubclass(effect_class, HangingConversionSpellEffect):
+            output_effects += await effect.output_effect()
 
-    except Exception as e:
-        print(e)
+        else:
+            output_effects.append(effect)
 
     return output_effects
 
@@ -173,8 +168,6 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         ))
     
     def is_global() -> bool:
-        print(eff_type)
-        print(param)
         return all((
             eff_type in charm_effects.union(ward_effects),
             target is EffectTarget.target_global,
@@ -187,6 +180,9 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         return target in ally_targets.difference(_aoe_targets)
     
     def is_effect_beneficial(neg_is_good: bool = False) -> bool:
+        if is_global():
+            return True
+
         if neg_is_good:
             return (hits_ally() and param < 0) or (hits_enemy() and param > 0)
         
@@ -265,50 +261,15 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return False
         
 
-async def collapse_subeffects(effect: DynamicSpellEffect) -> List[DynamicSpellEffect]:
-    target = await effect.effect_target()
-    eff_type = await effect.effect_type()
-
-    if target != EffectTarget.invalid_target and eff_type != SpellEffects.invalid_spell_effect:
-        return [effect]
-    
-    
-    spell_effect_type = type(spell_effect_type)
-    if issubclass(spell_effect_type, HangingConversionSpellEffect):
-        return await effect.output_effect()
-    
-    if issubclass(spell_effect_type, ConditionalSpellEffect):
-        elements = await effect.elements()
-        output_effects = []
-        for elem in elements:
-            output_effects.append(await elem.effect())
-        
-        return output_effects
-    
-    if issubclass(spell_effect_type, CompoundSpellEffect):
-        return await effect.effect_list()
-    
-    return [effect]
-
-
-
-
-
-
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
     effects = await get_inner_card_effects(card)
     is_aoe_req = SpellType.type_aoe in template.requirements
     matched_reqs = 0
     needed_matches = len(template.requirements)
-    collapsed_effects = []
-    for e in effects:
-        collapsed_effects += await collapse_subeffects(e)
 
     for req in template.requirements:
-        for c in collapsed_effects:
-            print(4)
-            if await is_req_satisfied(c, req, template, is_aoe_req):
-                print(5)
+        for e in effects:
+            if await is_req_satisfied(e, req, template, is_aoe_req):
                 matched_reqs += 1
                 break
 
@@ -494,11 +455,7 @@ class SprintyCombat(CombatHandler):
         return None
 
     async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
-        print(1)
-        try:
-            cards = await self.get_castable_cards()
-        except Exception as e:
-            print(e)
+        cards = await self.get_castable_cards()
         res = []
         for c in cards:
             if await does_card_contain_reqs(c, template):
@@ -602,7 +559,6 @@ class SprintyCombat(CombatHandler):
         elif isinstance(spell, TemplateSpell):
             spell: TemplateSpell
             res = await self.get_cards_by_template(spell)
-            print(res)
             if len(res) > 0:
                 return res[0]
             return None
@@ -615,7 +571,6 @@ class SprintyCombat(CombatHandler):
             return False
 
         if cur_card == "pass":
-            print("declared pass fail")
             await self.pass_button()
             return True
 
@@ -658,7 +613,6 @@ class SprintyCombat(CombatHandler):
 
     async def fail_turn(self):
         self.turn_adjust -= 1
-        print("fail turn")
         await self.pass_button()
 
     async def on_fizzle(self):
@@ -710,7 +664,6 @@ class SprintyCombat(CombatHandler):
                             if await self.try_execute_config(p):
                                 break  # we found a working priority and managed to cast it
                         else:
-                            print("round config fail")
                             await self.pass_button()
                     else:  # Very bad. Probably using empty config
                         await self.config.handle_no_cards_given()
