@@ -176,7 +176,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
     def is_global() -> bool:
         return all((
             eff_type in charm_effects.union(ward_effects),
-            target is EffectTarget.target_global
+            target is EffectTarget.target_global,
         ))
     
     def is_basic_hanging_effect():
@@ -186,6 +186,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             is_ward() and SpellType.type_shield in template.requirements,
             is_trap() and SpellType.type_trap in template.requirements,
             is_aura() and SpellType.type_aura in template.requirements,
+            is_global() and SpellType.type_global in template.requirements,
         ))
 
     match req:
@@ -227,11 +228,9 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         
         case SpellType.type_aura:
             return is_aura()
+
         case SpellType.type_global:
-            return all(
-                eff_type in charm_effects.union(ward_effects),
-                target is EffectTarget.target_global,
-            )
+            return is_global()
         
         case SpellType.type_polymorph:
             return eff_type is SpellEffects.polymorph
