@@ -124,8 +124,8 @@ aoe_targets = {
 
 async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe: bool = False) -> bool:
     eff_type = await effect.effect_type()
-    disp = await effect.disposition()
     target = await effect.effect_target()
+    param = await effect.effect_param()
     rounds = await effect.num_rounds()
 
     _aoe_targets = aoe_targets
@@ -137,32 +137,32 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
         print("This ran")
         return all((
             eff_type in charm_effects,
-            disp is HangingDisposition.beneficial,
             target in ally_targets,
+            param > 0,
             rounds == 0,
         ))
 
     def is_charm() -> bool:
         return all((
             eff_type in charm_effects,
-            disp is HangingDisposition.harmful,
             target in enemy_targets,
+            param < 0,
             rounds == 0,
         ))
 
     def is_ward() -> bool:
         return all((
             eff_type in ward_effects,
-            disp is HangingDisposition.beneficial,
             target in ally_targets,
+            param < 0,
             rounds == 0,
         ))
 
     def is_trap() -> bool:
         return all((
             eff_type in ward_effects,
-            disp is HangingDisposition.harmful,
             target in enemy_targets,
+            param > 0,
             rounds == 0,
         ))
     
