@@ -458,7 +458,6 @@ class SprintyCombat(CombatHandler):
         return None
 
     async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
-        await self.wait_for_planning_phase()
         print(1)
         try:
             cards = await self.get_castable_cards()
@@ -637,8 +636,6 @@ class SprintyCombat(CombatHandler):
         async with self.client.mouse_handler:
             try:
                 self.config.attach_combat(self) # For safety. Could probably also do this in handle_comba
-                # Attempt to fix second turn always breaking
-                await self.wait_for_planning_phase(1.0)
 
                 real_round = await self.round_number()
                 self.cur_card_count = len(await self.get_cards()) + (await self.get_card_counts())[0]
