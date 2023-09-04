@@ -546,6 +546,7 @@ class SprintyCombat(CombatHandler):
         elif isinstance(spell, TemplateSpell):
             spell: TemplateSpell
             res = await self.get_cards_by_template(spell)
+            print(res)
             if len(res) > 0:
                 return res[0]
             return None
