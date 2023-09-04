@@ -122,7 +122,7 @@ aoe_targets = {
 
 
 
-async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe = False) -> bool:
+async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe: bool = False) -> bool:
     eff_type = await effect.effect_type()
     disp = await effect.disposition()
     target = await effect.effect_target()
@@ -134,6 +134,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
 
 
     def is_blade() -> bool:
+        print("This ran")
         return all(
             eff_type in charm_effects,
             disp is HangingDisposition.beneficial,
@@ -164,6 +165,8 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
             target in enemy_targets,
             rounds == 0,
         )
+    
+    print(req)
 
     match req:
         case SpellType.type_damage:
