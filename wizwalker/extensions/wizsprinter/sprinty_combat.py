@@ -453,7 +453,10 @@ class SprintyCombat(CombatHandler):
 
     async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
         print(1)
-        cards = await self.get_castable_cards()
+        try:
+            cards = await self.get_castable_cards()
+        except Exception as e:
+            print(e)
         res = []
         for c in cards:
             if await does_card_contain_reqs(c, template):
