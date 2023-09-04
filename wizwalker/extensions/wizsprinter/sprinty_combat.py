@@ -12,6 +12,8 @@ from .combat_backends.combat_config_parser import TargetType, TargetData, MoveCo
     , NamedSpell, SpellType, Spell
 from .combat_backends.backend_base import BaseCombatBackend
 
+from enum import Enum, auto
+
 
 async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     effects = await card.get_spell_effects()
@@ -116,6 +118,18 @@ aoe_targets = {
     EffectTarget.friendly_team_all_at_once
 }
 
+class ReqSatisfaction(Enum):
+    true = auto()
+    false = auto()
+    reject_card = auto()
+
+
+def get_req_status(req_statement: bool) -> ReqSatisfaction:
+    if req_statement:
+        return ReqSatisfaction.true
+    
+    return ReqSatisfaction.false
+
 
 async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template: TemplateSpell, allow_aoe: bool = False) -> bool:
     eff_type = await effect.effect_type()
@@ -193,78 +207,78 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         return eff_type in damage_effects and hits_enemy() and is_effect_beneficial(True)
 
     if is_damage() and SpellType.type_damage not in template.requirements:
-        return False
+        return ReqSatisfaction.reject_card
 
     match req:
         case SpellType.type_damage:
-            return is_damage()
+            return get_req_status(is_damage())
         
         case SpellType.type_inc_damage:
-            return eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True)
+            return get_req_status(eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True))
 
         case SpellType.type_out_damage:
-            return eff_type in (SpellEffects.modify_outgoing_damage, SpellEffects.modify_outgoing_damage_flat) and is_effect_beneficial()
+            return get_req_status(eff_type in (SpellEffects.modify_outgoing_damage, SpellEffects.modify_outgoing_damage_flat) and is_effect_beneficial())
 
         case SpellType.type_aoe:
-            return target in aoe_targets
+            return get_req_status(target in aoe_targets)
         
         case SpellType.type_inc_heal:
-            return eff_type in (SpellEffects.modify_incoming_heal, SpellEffects.modify_incoming_heal_flat, SpellEffects.modify_incoming_heal_over_time) and is_effect_beneficial()
+            return get_req_status(eff_type in (SpellEffects.modify_incoming_heal, SpellEffects.modify_incoming_heal_flat, SpellEffects.modify_incoming_heal_over_time) and is_effect_beneficial())
 
         case SpellType.type_out_heal:
-            return eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial()
+            return get_req_status(eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial())
         
         case SpellType.type_heal:
-            return eff_type in heal_effects and hits_ally() and is_effect_beneficial()
+            return get_req_status(eff_type in heal_effects and hits_ally() and is_effect_beneficial())
         
         case SpellType.type_heal_self:
-            return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial()
+            return get_req_status(eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team) and is_effect_beneficial())
         
         case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
-            return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me) and is_effect_beneficial()
+            return get_req_status(eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me) and is_effect_beneficial())
         
         case SpellType.type_blade:
-            return is_blade() and hits_ally()
+            return get_req_status(is_blade() and hits_ally())
         
         case SpellType.type_charm:
-            return is_charm() and hits_enemy()
+            return get_req_status(is_charm() and hits_enemy())
 
         case SpellType.type_ward:
-            return is_ward() and hits_ally()
+            return get_req_status(is_ward() and hits_ally())
         
         case SpellType.type_trap:
-            return is_trap() and hits_enemy()
+            return get_req_status(is_trap() and hits_enemy())
         
         case SpellType.type_enchant:
-            return target is EffectTarget.spell
+            return get_req_status(target is EffectTarget.spell)
         
         case SpellType.type_aura:
-            return is_aura()
+            return get_req_status(is_aura())
 
         case SpellType.type_global:
-            return is_global()
+            return get_req_status(is_global())
         
         case SpellType.type_polymorph:
-            return eff_type is SpellEffects.polymorph
+            return get_req_status(eff_type is SpellEffects.polymorph)
         
         case SpellType.type_shadow:
-            return eff_type is SpellEffects.shadow_self
+            return get_req_status(eff_type is SpellEffects.shadow_self)
         
         case SpellType.type_shadow_creature:
-            return eff_type is SpellEffects.shadow_creature
+            return get_req_status(eff_type is SpellEffects.shadow_creature)
         
         case SpellType.type_pierce:
-            return eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial()
+            return get_req_status(eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial())
         
         case SpellType.type_prism:
-            return eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type)
+            return get_req_status(eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type))
         
         case SpellType.type_dispel:
-            return eff_type is SpellEffects.dispel
+            return get_req_status(eff_type is SpellEffects.dispel)
         
         case _:
             # This should never happen
-            return False
+            return ReqSatisfaction.false
         
 
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
@@ -275,9 +289,18 @@ async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> b
 
     for req in template.requirements:
         for e in effects:
-            if await is_req_satisfied(e, req, template, is_aoe_req):
-                matched_reqs += 1
-                break
+            req_status = await is_req_satisfied(e, req, template, is_aoe_req)
+            match req_status:
+                case ReqSatisfaction.true:
+                    matched_reqs += 1
+                    break
+                
+                case ReqSatisfaction.reject_card:
+                    break
+
+                case _:
+                    pass
+
 
     return matched_reqs == needed_matches
 
