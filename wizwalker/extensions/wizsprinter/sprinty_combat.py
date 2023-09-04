@@ -60,15 +60,6 @@ buff_damage_effects = {
     SpellEffects.modify_outgoing_damage_flat
 }
 
-damage_enchant_effects = {
-    SpellEffects.modify_card_damage,
-    SpellEffects.modify_card_damage_by_rank
-}
-
-heal_enchant_effects = {
-    SpellEffects.modify_card_heal
-}
-
 buff_heal_effects = {
     SpellEffects.modify_outgoing_heal,
     SpellEffects.modify_outgoing_heal_flat,
@@ -129,19 +120,14 @@ aoe_targets = {
     EffectTarget.friendly_team_all_at_once
 }
 
-heal_spell_types = {
-    SpellType.type_heal,
-    SpellType.type_heal_other,
-    SpellType.type_heal_self
-}
-
-
 
 async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template: TemplateSpell, allow_aoe: bool = False) -> bool:
     eff_type = await effect.effect_type()
     target = await effect.effect_target()
     param = await effect.effect_param()
     rounds = await effect.num_rounds()
+    if target is EffectTarget.target_global:
+        print(f"ROUNDS: {rounds}")
 
     _aoe_targets = aoe_targets
     if not allow_aoe:
@@ -187,6 +173,12 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             rounds > 0,
         ))
     
+    def is_global() -> bool:
+        return all((
+            eff_type in charm_effects.union(ward_effects),
+            target is EffectTarget.target_global
+        ))
+    
     def is_basic_hanging_effect():
         return any((
             is_blade() and SpellType.type_blade in template.requirements,
@@ -195,21 +187,12 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             is_trap() and SpellType.type_trap in template.requirements,
             is_aura() and SpellType.type_aura in template.requirements,
         ))
-    
-    print(req)
-    print(eff_type)
-    print(param)
-    print(target)
-    print(rounds)
 
     match req:
         case SpellType.type_damage:
             if is_basic_hanging_effect():
                 return eff_type in buff_damage_effects
 
-            if SpellType.type_enchant in template.requirements:
-                return eff_type in damage_enchant_effects
-            
             return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
         
         case SpellType.type_aoe:
@@ -218,22 +201,13 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         case SpellType.type_heal:
             if is_basic_hanging_effect():
                 return eff_type in buff_heal_effects
-            
-            if SpellType.type_enchant in template.requirements:
-                return eff_type in heal_enchant_effects
-            
+
             return eff_type in heal_effects and target in ally_targets.difference(_aoe_targets)
         
         case SpellType.type_heal_self:
-            if SpellType.type_enchant in template.requirements:
-                return eff_type in heal_enchant_effects
-
             return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team)
         
         case SpellType.type_heal_other: #TODO: Figure out why this even exists - slack
-            if SpellType.type_enchant in template.requirements:
-                return eff_type in heal_enchant_effects
-
             return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
         
         case SpellType.type_blade:
