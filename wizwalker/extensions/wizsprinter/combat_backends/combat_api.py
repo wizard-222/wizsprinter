@@ -12,8 +12,12 @@ class TargetType(Enum):
 
 class SpellType(Enum):
     type_damage = auto()
+    type_inc_damage = auto()
+    type_out_damage = auto()
     type_aoe = auto()
     type_heal = auto()
+    type_inc_heal = auto()
+    type_out_heal = auto()
     type_heal_self = auto()
     type_heal_other = auto()
     type_blade = auto()

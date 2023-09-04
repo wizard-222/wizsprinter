@@ -188,22 +188,44 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             is_aura() and SpellType.type_aura in template.requirements,
             is_global() and SpellType.type_global in template.requirements,
         ))
+    
+    def hits_enemy():
+        return target in enemy_targets.difference(_aoe_targets)
+    
+    def hits_ally():
+        return target in ally_targets.difference(_aoe_targets)
+    
+    def is_effect_beneficial(neg_is_good: bool = False) -> bool:
+        if neg_is_good:
+            return (hits_ally() and param < 0) or (hits_enemy() and param > 0)
+        
+        return (hits_ally() and param > 0) or (hits_enemy() and param < 0)
+
 
     match req:
         case SpellType.type_damage:
-            if is_basic_hanging_effect():
-                return eff_type in buff_damage_effects
-
             return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
         
+        case SpellType.type_inc_damage:
+            return eff_type in (SpellEffects.modify_incoming_damage, SpellEffects.modify_incoming_damage_flat, SpellEffects.modify_incoming_damage_over_time) and is_effect_beneficial(True)
+
+        case SpellType.type_out_damage:
+            return eff_type in (SpellEffects.modify_outgoing_damage, SpellEffects.modify_outgoing_damage_flat) and is_effect_beneficial()
+
         case SpellType.type_aoe:
             return target in aoe_targets
+        
+        case SpellType.type_inc_heal:
+            return eff_type in (SpellEffects.modify_incoming_heal, SpellEffects.modify_incoming_heal_flat, SpellEffects.modify_incoming_heal_over_time) and is_effect_beneficial()
+
+        case SpellType.type_out_heal:
+            return eff_type in (SpellEffects.modify_outgoing_heal, SpellEffects.modify_outgoing_heal_flat) and is_effect_beneficial()
         
         case SpellType.type_heal:
             if is_basic_hanging_effect():
                 return eff_type in buff_heal_effects
 
-            return eff_type in heal_effects and target in ally_targets.difference(_aoe_targets)
+            return eff_type in heal_effects and target in hits_ally()
         
         case SpellType.type_heal_self:
             return eff_type in heal_effects and target in (EffectTarget.self, EffectTarget.friendly_team)
@@ -212,16 +234,16 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
         
         case SpellType.type_blade:
-            return is_blade()
+            return is_blade() and target in hits_ally()
         
         case SpellType.type_charm:
-            return is_charm() and target in enemy_targets.difference(_aoe_targets)
-        
+            return is_charm() and target in hits_enemy()
+
         case SpellType.type_shield:
-            return is_ward() and target in ally_targets.difference(_aoe_targets)
+            return is_ward() and target in hits_ally()
         
         case SpellType.type_trap:
-            return is_trap() and target in enemy_targets.difference(_aoe_targets)
+            return is_trap() and target in hits_enemy()
         
         case SpellType.type_enchant:
             return target is EffectTarget.spell
@@ -242,7 +264,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             return eff_type is SpellEffects.shadow_creature
         
         case SpellType.type_pierce:
-            return eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing)
+            return eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial()
         
         case SpellType.type_prism:
             return eff_type in (SpellEffects.modify_outgoing_damage_type, SpellEffects.modify_incoming_damage_type)
