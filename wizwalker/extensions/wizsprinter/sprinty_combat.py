@@ -122,7 +122,7 @@ aoe_targets = {
 
 
 
-async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe: bool = False) -> bool:
+async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template: TemplateSpell, allow_aoe: bool = False) -> bool:
     eff_type = await effect.effect_type()
     target = await effect.effect_target()
     param = await effect.effect_param()
@@ -173,7 +173,13 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
         ))
     
     def is_basic_hanging_effect():
-        return any((is_blade(), is_charm(), is_ward(), is_trap(), is_aura()))
+        return any((
+            is_blade() and SpellType.type_blade in template.requirements,
+            is_charm() and SpellType.type_charm in template.requirements,
+            is_ward() and SpellType.type_shield in template.requirements,
+            is_trap() and SpellType.type_trap in template.requirements,
+            is_aura() and SpellType.type_aura in template.requirements,
+        ))
     
     print(req)
     print(eff_type)
@@ -265,7 +271,7 @@ async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> b
         for e in effects:
             effect = await conditional_subeffect_check(e)
             print(4)
-            if await is_req_satisfied(effect, req, is_aoe_req):
+            if await is_req_satisfied(effect, req, template, is_aoe_req):
                 print(5)
                 matched_reqs += 1
                 break
