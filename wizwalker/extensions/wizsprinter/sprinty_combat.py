@@ -137,7 +137,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
         print("This ran")
         return all((
             eff_type in charm_effects,
-            target in ally_targets,
+            target in ally_targets.difference(_aoe_targets),
             param > 0,
             rounds == 0,
         ))
@@ -145,7 +145,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
     def is_charm() -> bool:
         return all((
             eff_type in charm_effects,
-            target in enemy_targets,
+            target in enemy_targets.difference(_aoe_targets),
             param < 0,
             rounds == 0,
         ))
@@ -153,7 +153,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
     def is_ward() -> bool:
         return all((
             eff_type in ward_effects,
-            target in ally_targets,
+            target in ally_targets.difference(_aoe_targets),
             param < 0,
             rounds == 0,
         ))
@@ -161,10 +161,20 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
     def is_trap() -> bool:
         return all((
             eff_type in ward_effects,
-            target in enemy_targets,
+            target in enemy_targets.difference(_aoe_targets),
             param > 0,
             rounds == 0,
         ))
+    
+    def is_aura() -> bool:
+        return all((
+            eff_type in charm_effects.union(ward_effects),
+            target is EffectTarget.self,
+            rounds > 0,
+        ))
+    
+    def is_basic_hanging_effect():
+        return any(is_blade(), is_charm(), is_ward(), is_trap(), is_aura())
     
     print(req)
     print(eff_type)
@@ -174,7 +184,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
 
     match req:
         case SpellType.type_damage:
-            if is_blade() or is_trap():
+            if is_basic_hanging_effect():
                 return eff_type in buff_damage_effects
             
             return eff_type in damage_effects and target in enemy_targets.difference(_aoe_targets)
@@ -183,7 +193,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
             return target in aoe_targets
         
         case SpellType.type_heal:
-            if is_blade():
+            if is_basic_hanging_effect():
                 return eff_type in buff_heal_effects
             
             return eff_type in heal_effects and target in ally_targets.difference(_aoe_targets)
@@ -195,7 +205,10 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
             return eff_type in heal_effects and target in (EffectTarget.friendly_single, EffectTarget.friendly_single_not_me)
         
         case SpellType.type_blade:
-            return is_blade() and target in ally_targets.difference(_aoe_targets)
+            return is_blade()
+        
+        case SpellType.type_charm:
+            return is_charm() and target in enemy_targets.difference(_aoe_targets)
         
         case SpellType.type_shield:
             return is_ward() and target in ally_targets.difference(_aoe_targets)
@@ -207,12 +220,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, allow_aoe
             return target is EffectTarget.spell
         
         case SpellType.type_aura:
-            return all(
-                eff_type in charm_effects.union(ward_effects),
-                target is EffectTarget.self,
-                rounds > 0,
-            )
-        
+            return is_aura()
         case SpellType.type_global:
             return all(
                 eff_type in charm_effects.union(ward_effects),
