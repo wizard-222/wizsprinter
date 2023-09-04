@@ -458,6 +458,7 @@ class SprintyCombat(CombatHandler):
         return None
 
     async def get_cards_by_template(self, template: TemplateSpell) -> List[CombatCard]:
+        await self.wait_for_planning_phase()
         print(1)
         try:
             cards = await self.get_castable_cards()
