@@ -136,6 +136,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
     target = await effect.effect_target()
     param = await effect.effect_param()
     rounds = await effect.num_rounds()
+    print(9)
 
     _aoe_targets = aoe_targets
     if not allow_aoe:
@@ -285,29 +286,36 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
         
         case _:
             # This should never happen
-            is_satisfied = ReqSatisfaction.false
+            print("Line 289 - Something happened that should not have")
+            is_satisfied = False
 
     return get_req_status(is_satisfied)
         
 
 async def does_card_contain_reqs(card: CombatCard, template: TemplateSpell) -> bool:
     effects = await get_inner_card_effects(card)
+    print(2)
     is_aoe_req = SpellType.type_aoe in template.requirements
     matched_reqs = 0
     needed_matches = len(template.requirements)
 
     for req in template.requirements:
         for e in effects:
+            print(3)
             req_status = await is_req_satisfied(e, req, template, is_aoe_req)
+            print(4)
             match req_status:
                 case ReqSatisfaction.true:
+                    print(6)
                     matched_reqs += 1
                     break
                 
                 case ReqSatisfaction.reject_card:
+                    print(7)
                     break
 
                 case _:
+                    print(8)
                     pass
 
 
@@ -496,6 +504,7 @@ class SprintyCombat(CombatHandler):
         cards = await self.get_castable_cards()
         res = []
         for c in cards:
+            print(1)
             if await does_card_contain_reqs(c, template):
                 res.append(c)
 
