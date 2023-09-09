@@ -287,7 +287,7 @@ async def is_req_satisfied(effect: DynamicSpellEffect, req: SpellType, template:
             is_satisfied = eff_type is SpellEffects.shadow_self
         
         case SpellType.type_shadow_creature:
-            is_satisfied = eff_type is SpellEffects.shadow_creature
+            is_satisfied = eff_type in (SpellEffects.shadow_creature, SpellEffects.select_shadow_creature_attack_target)
         
         case SpellType.type_pierce:
             is_satisfied = eff_type in (SpellEffects.modify_outgoing_armor_piercing, SpellEffects.modify_incoming_armor_piercing) and is_effect_beneficial()
