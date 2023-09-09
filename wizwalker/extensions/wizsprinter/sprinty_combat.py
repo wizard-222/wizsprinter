@@ -39,13 +39,13 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
 
 
 async def is_enchantable(card: CombatCard) -> bool:
-    return not any(
+    return not any((
         await card.is_enchanted(),
         await card.is_enchanted_from_item_card(),
         await card.is_treasure_card(),
         await card.is_item_card(),
         await card.is_cloaked(),
-    )
+    ))
 
 
 damage_effects = {
