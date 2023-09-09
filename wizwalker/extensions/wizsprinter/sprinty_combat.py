@@ -6,7 +6,7 @@ from wizwalker.combat import CombatHandler
 from wizwalker.combat import CombatMember
 from wizwalker.combat.card import CombatCard
 from wizwalker.memory import EffectTarget, SpellEffects, DynamicSpellEffect
-from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect, HangingDisposition, RandomSpellEffect, RandomPerTargetSpellEffect, VariableSpellEffect, EffectListSpellEffect, ShadowSpellEffect
+from wizwalker.memory.memory_objects.spell_effect import CompoundSpellEffect, ConditionalSpellEffect, HangingConversionSpellEffect
 
 from .combat_backends.combat_config_parser import TargetType, TargetData, MoveConfig, TemplateSpell \
     , NamedSpell, SpellType, Spell
@@ -18,22 +18,32 @@ from enum import Enum, auto
 async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     effects = await card.get_spell_effects()
     output_effects: List[DynamicSpellEffect] = []
-
+    print("a")
 
     for effect in effects:
+        print(await effect.effect_type())
+        print(await effect.effect_target())
+        print(await effect.effect_param())
         effect_class = type(effect)
         if issubclass(effect_class, CompoundSpellEffect):
+            print("b")
             output_effects += await effect.effect_list()
+            print("c")
 
         elif issubclass(effect_class, ConditionalSpellEffect):
+            print("d")
             issubclass(effect_class, ConditionalSpellEffect)
             output_effects += [await elem.effect() for elem in await effect.elements()]
+            print("e")
 
         elif issubclass(effect_class, HangingConversionSpellEffect):
+            print("f")
             output_effects += await effect.output_effect()
+            print("g")
 
         else:
             output_effects.append(effect)
+            print("h")
 
     return output_effects
 
