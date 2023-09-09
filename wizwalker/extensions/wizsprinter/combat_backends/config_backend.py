@@ -47,7 +47,7 @@ class CombatConfigProvider(BaseCombatBackend):
                 else:
                     priorities.append(old_priority)
                     enchantless_move = Move(old_priority.move.card, None)
-                    enchantless = MoveConfig(enchantless_move, old_priority.round)
+                    enchantless = MoveConfig(enchantless_move, old_priority.target)
                     priorities.append(enchantless)
             rounds.append(PriorityLine(priorities, old_round.round))
 
