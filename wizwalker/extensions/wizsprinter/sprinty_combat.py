@@ -28,7 +28,7 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
         if issubclass(effect_class, CompoundSpellEffect):
             print("b")
             try:
-                subeffects = await effect.effect_list()
+                subeffects = await effect.effects_list()
             except Exception as e:
                 print(e)
             output_effects += subeffects
