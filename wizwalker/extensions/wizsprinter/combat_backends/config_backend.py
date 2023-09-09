@@ -18,7 +18,10 @@ class CombatConfigProvider(BaseCombatBackend):
 
         parser = Lark(grammar)
         tree = parser.parse(file_contents)
-        return self._expand_config(TreeToConfig().transform(tree))
+        try:
+            return self._expand_config(TreeToConfig().transform(tree))
+        except Exception as e:
+            print(e)
 
     async def get_real_round(self, r: int) -> Optional[PriorityLine]:
         if r in self.config.specific_rounds:
@@ -43,7 +46,7 @@ class CombatConfigProvider(BaseCombatBackend):
                     priorities.append(old_priority)
                 else:
                     priorities.append(old_priority)
-                    enchantless_move = Move(old_priority.move.chard, None)
+                    enchantless_move = Move(old_priority.move.card, None)
                     enchantless = MoveConfig(enchantless_move, old_priority.round)
                     priorities.append(enchantless)
             rounds.append(PriorityLine(priorities, old_round.round))
