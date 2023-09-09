@@ -48,4 +48,5 @@ class CombatConfigProvider(BaseCombatBackend):
                     priorities.append(enchantless)
             rounds.append(PriorityLine(priorities, old_round.round))
 
+        print(CombatConfig(rounds))
         return CombatConfig(rounds)
