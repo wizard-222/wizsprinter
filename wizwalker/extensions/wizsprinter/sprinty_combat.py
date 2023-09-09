@@ -609,8 +609,10 @@ class SprintyCombat(CombatHandler):
         elif isinstance(spell, TemplateSpell):
             spell: TemplateSpell
             res = await self.get_cards_by_template(spell)
+            print(f"Before: {res}")
             if only_enchantable:
                 res = [c for c in res if await is_enchantable(c)]
+            print(f"After: {res}")
             if len(res) > 0:
                 return res[0]
             return None
