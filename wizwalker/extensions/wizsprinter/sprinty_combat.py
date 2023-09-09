@@ -38,6 +38,16 @@ async def get_inner_card_effects(card: CombatCard) -> List[DynamicSpellEffect]:
     return output_effects
 
 
+async def is_enchantable(card: CombatCard) -> bool:
+    return not any(
+        await card.is_enchanted(),
+        await card.is_enchanted_from_item_card(),
+        await card.is_treasure_card(),
+        await card.is_item_card(),
+        await card.is_cloaked(),
+    )
+
+
 damage_effects = {
     SpellEffects.damage,
     SpellEffects.damage_no_crit,
@@ -585,18 +595,22 @@ class SprintyCombat(CombatHandler):
 
         return False
 
-    async def try_get_spell(self, spell: Spell, only_enchants=False) -> Union[CombatCard, str, None]:
+    async def try_get_spell(self, spell: Spell, only_enchants=False, only_enchantable: bool = False) -> Union[CombatCard, str, None]:
         if isinstance(spell, NamedSpell):
             spell: NamedSpell
             if spell.name in ("pass", "none"):
                 return spell.name
+            
             if spell.is_literal:
                 return await self.get_castable_card_named(spell.name, only_enchants)
             else:
                 return await self.get_castable_card_vaguely_named(spell.name, only_enchants)
+
         elif isinstance(spell, TemplateSpell):
             spell: TemplateSpell
             res = await self.get_cards_by_template(spell)
+            if only_enchantable:
+                res = [c for c in res if await is_enchantable(c)]
             if len(res) > 0:
                 return res[0]
             return None
@@ -604,7 +618,8 @@ class SprintyCombat(CombatHandler):
             raise NotImplementedError("Unknown spell config type")
 
     async def try_execute_config(self, move_config: MoveConfig) -> bool:
-        cur_card = await self.try_get_spell(move_config.move.card)
+        only_enchantable = move_config.move.enchant is not None
+        cur_card = await self.try_get_spell(move_config.move.card, only_enchantable=only_enchantable)
         if cur_card is None:
             return False
 
@@ -617,7 +632,7 @@ class SprintyCombat(CombatHandler):
         if target == False:  # Wouldn't want a None to mess it up
             return False
 
-        if move_config.move.enchant is not None and not await cur_card.is_enchanted():
+        if only_enchantable and not await cur_card.is_enchanted():
             enchant_card = await self.try_get_spell(move_config.move.enchant, only_enchants=True)
             if enchant_card != "none":
                 if enchant_card is not None:
