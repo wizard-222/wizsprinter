@@ -3,7 +3,6 @@ from typing import *
 from wizwalker import XYZ, Keycode, MemoryReadError, Primitive
 from wizwalker.client import Client
 from wizwalker.memory import DynamicClientObject, ClientObject
-from wizwalker2 import Primitive
 
 
 class SprintyClient(Client):
