@@ -357,7 +357,7 @@ class SprintyCombat(CombatHandler):
                     return member
             return None
         try:
-            return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+            return await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
                 _inner,
                 timeout=2.0
             )
@@ -374,7 +374,7 @@ class SprintyCombat(CombatHandler):
                     return member
             return None
         try:
-            return await wizwalker.utils.maybe_wait_for_value_with_timeout(
+            return await wizwalker.utils.maybe_wait_for_any_value_with_timeout(
                 _inner,
                 timeout=2.0
             )
