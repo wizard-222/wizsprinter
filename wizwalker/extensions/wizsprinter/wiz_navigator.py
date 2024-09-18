@@ -2,11 +2,11 @@ import os
 import asyncio
 import sys
 import traceback
-
 from wizwalker import XYZ, ClientHandler
 from wizwalker import Keycode
 from loguru import logger
 from itertools import takewhile
+from .text_parser import *
 import math
 from wizwalker.memory import Window
 
@@ -36,7 +36,7 @@ async def go_through_dialog(p):
 async def gateTypeDifferentiation(x, y, z, p, zoneAccessType):
     # standard zone gate, just teleport
     if zoneAccessType == 'standard':
-        await p.teleport(XYZ(float(x), float(y), float(z)))
+        await p.teleport(XYZ(x,y,z))
 
         await p.wait_for_zone_change()
 
@@ -614,8 +614,14 @@ async def goToNewWorld(p, destinationWorld):
                 pageCount = await child.maybe_text()
                 pageCount = pageCount[8:-9]
                 currentPage = pageCount.split('/', 1)[0]
-
-    worldIndex = worldList.index(destinationWorld)
+    worldIndex = -1
+    for i in range(len(worldList)):
+        if worldList[i] in destinationWorld:
+            worldIndex = i
+            break
+    if worldIndex == -1:
+        logger.error("destination not found!")
+        return
     spiralGateName = zoneDoorNameList[worldIndex]
 
     isChildFound = False
@@ -652,36 +658,7 @@ async def goToNewWorld(p, destinationWorld):
                         pageCount = await child.maybe_text()
                         pageCount = pageCount[8:-9]
                         currentPage = pageCount.split('/', 1)[0]
-                #print(f"{await child.name()}: {await read_control_checkbox_text(child)}")
-
-    # 4 buttons per page - menuButtonNum / 4 rounded up to nearest whole number equals the page that the button is on
-    # worldIndex = worldList.index(destinationWorld)
-    # actualButtonToClick = worldIndex + 1
-    #
-    # if actualButtonToClick > 4:
-    #     pageNum = int(math.ceil(actualButtonToClick / 4)) - 1
-    #     # click to correct page
-    #     if pageNum > 0:
-    #         for i in range(pageNum):
-    #             await p.mouse_handler.click_window_with_name('rightButton')
-    #             await asyncio.sleep(0.2)
-    #
-    #     # the actual button number on the page, considering that there are 4 buttons per page (0 -> 3)
-    #     actualButtonToClick = ((actualButtonToClick) - ((pageNum) * 4))
-    #
-    #
-    # await p.mouse_handler.click_window_with_name(zoneDoorOptions[worldIndex])
-    # await asyncio.sleep(.4)
-    # await p.mouse_handler.click_window_with_name('teleportButton')
-    # await p.wait_for_zone_change()
-    #
-    # await p.mouse_handler.deactivate_mouseless()
-    #
-    # # move away from the spiral door so we dont accidentally click on it again after teleporting later
-    # await p.send_key(Keycode.W, 1.5)
-
-    bigStackDestinations = await createStack(destinationWorld)
-    return bigStackDestinations
+    return
 
 async def parseFile(fileName, worldName):
     file = open(resource_path(f"{cur_path}/{fileName}"), "r")
@@ -701,277 +678,23 @@ async def parseFile(fileName, worldName):
 
 @logger.catch()
 # from any zone in any world (excluding certain ones, such as aquila), travel to a destination zone
-async def goToDestination(p, destinationZone, p1WorldName, bigStackDestinations, interactiveTeleportersOriginal):
-
+async def goToDestination(p, destinationZone, p1WorldName):
     currentZone = await p.zone_name()
-    currentWorld = currentZone.split('/', 1)[0]
-    destinationWorld = destinationZone.split('/', 1)[0]
-
-    pathToCurrentZoneStack = []
-    pathToDestinationStack = []
-
-    # user may not be in the correct world.  Find the nearest spiral door and teleport to the correct world
-    if currentWorld != destinationWorld:
-        p1ZoneNameNew = await p.zone_name()
-        p1WorldNameNew = p1ZoneNameNew.split('/', 1)[0]
-
-        # read list of unique locations, such as NPC locations and spiral door coordinates
-        currentWorldObjectLocationsOriginal = await parseFile("traversalData/uniqueObjectLocations.txt", p1WorldNameNew)
-
-        zoneDoor = ''
-        zoneContainingZoneDoor = ''
-        uniqueObjectIterator = 0
-        while zoneDoor == '':
-            split = currentWorldObjectLocationsOriginal[uniqueObjectIterator].split(';')
-            if split[0] == 'ZONEDOOR':
-                zoneDoor = split
-                zoneContainingZoneDoor = split[4]
-
-            uniqueObjectIterator += 1
-
-        currentWorldStackDestinations = await createStack(currentWorld)
-
-        # traverse to the first zone in the world (or wherever the zone door is located)
-        logger.info(f'Returning to Spiral Door in: {zoneContainingZoneDoor}')
-        await goToDestination(p, zoneContainingZoneDoor, currentWorld, currentWorldStackDestinations, interactiveTeleportersOriginal)
-
-        # teleport to the zone door
-        await p.teleport(XYZ(float(split[1]), float(split[2]), float(split[3])))
-        await asyncio.sleep(2)
-
-        # teleport to new world
-        logger.info(f'User in wrong world - heading to {destinationWorld}')
-        bigStackDestinations = await goToNewWorld(p, destinationWorld)
-        p1WorldName = destinationWorld
-
-    i = 0
-    currentZone = await p.zone_name()
-    if currentZone.strip() != destinationZone.strip():
-        currentZoneInZoneMap = False
-        while i < len(bigStackDestinations):
-            if 'WORLD -' in bigStackDestinations[i][0][0]:
-                break
-
-            if str(bigStackDestinations[i][len(bigStackDestinations[i]) - 1][1]).strip() == currentZone.strip():
-                currentZoneInZoneMap = True
-                break
-            i += 1
-
-        if currentZoneInZoneMap == False:
-            logger.info(f'Zone not found in zonemap - returning to Hub to reconnect')
-            # these have to be hardcoded
-            # if a player recalls to a dungeon, then attempts to return to the hub, they go through two zone changes: once to the hub, second back to the zone they were in before recalling
-            # this makes it impossible to account for zone changes without having ridiculously long sleeps or hardcoded zone names
-            worldHubsList = ['WizardCity/WC_Ravenwood_Teleporter', 'WizardCity/WC_Ravenwood', 'Krokotopia/KT_WorldTeleporter', 'Krokotopia/KT_Hub', 'Marleybone/Interiors/MB_WolfminsterAbbey', 'Marleybone/MB_Hub', 'DragonSpire/DS_Hub_Cathedral', 'MooShu/Interiors/MS_Teleport_Chamber', 'MooShu/MS_Hub', 'Celestia/CL_Hub', 'Wysteria/PA_Hub', 'Grizzleheim/GH_MainHub', 'Zafaria/ZF_Z00_Hub', 'Avalon/AV_Z00_Hub', 'Azteca/AZ_Z00_Zocalo', 'Khrysalis/KR_Z00_Hub', 'Polaris/PL_Z00_Walruskberg', 'Mirage/MR_Z00_Hub', 'Karamelle/KM_Z00_HUB', 'Empyrea/EM_Z00_Aeriel_HUB', 'Lemuria/LM_Z00_Hub']
-
-            currentZone = await p.zone_name()
-            while currentZone not in worldHubsList:
-                await p.send_key(Keycode.END)
-                await asyncio.sleep(.6)
-                currentZone = await p.zone_name()
-
-            await asyncio.sleep(3)
-            currentZone = await p.zone_name()
-
-
-    # for certain worlds, check if there is a teleporter between currentZone and destinationZone before traversing zones manually
-    teleportedToZone = False
-    if p1WorldName in ['Empyrea', 'Karamelle', 'Lemuria']:
-        interactiveTeleportersOriginal = await parseFile('traversalData/interactiveTeleporters.txt', p1WorldName)
-        teleportedToZone = await teleportToInteractiveTeleportIfAvailable(p, currentZone, destinationZone, interactiveTeleportersOriginal)
-
-    # contains data about gates between zones
-    linesOriginal = await parseFile("traversalData/gates_list.txt", p1WorldName)
-
-    # iterate over the zonemap (bigStackDestinations) and find the index containing the player's current zone as well as index containing their destination
-    if teleportedToZone == False:
-        if currentZone != destinationZone.strip():
-            pathToCurrentZoneStack = []
-            pathToDestinationStack = []
-
-            i = 0
-            while i < len(bigStackDestinations) and (len(pathToCurrentZoneStack) == 0 or len(pathToDestinationStack) == 0):
-
-                # if currentZone and destinationZone are the same, object is in the current zone, so only find the path to the destination
-                if currentZone.strip() != destinationZone.strip():
-                    if str(bigStackDestinations[i][len(bigStackDestinations[i]) - 1][1]).strip() == currentZone.strip():
-                        pathToCurrentZoneStack = bigStackDestinations[i]
-
-                if str(bigStackDestinations[i][len(bigStackDestinations[i]) - 1][1]).strip() == destinationZone.strip():
-                    # copy full path to the destination
-                    pathToDestinationStack = bigStackDestinations[i]
-
-                i += 1
-
-
-
-
-            # find all zones that the two paths (current and destination) have in common
-            # the shortest path between two zones is found by returning to the most recent common path - so we throw out all common paths except the last one
-            pathCurrentSplit = []
-            pathDestinationSplit = []
-
-
-            # in some worlds, zone maps are disconnected each other and connected through teleporters.  If we
-            # haven't found a teleporter and cannot find a destination, trace back all the way to the start
-            # and hopefully there will be a teleporter there
-            if len(pathToDestinationStack) == 0 and len(pathToCurrentZoneStack) > 0:
-                pathCurrentSplit.append(pathToCurrentZoneStack[0][0])
-
-            a = 0
-            while a < len(pathToCurrentZoneStack):
-                pathCurrentSplit.append(pathToCurrentZoneStack[a][1])
-                a += 1
-
-            a = 0
-            while a < len(pathToDestinationStack):
-                pathDestinationSplit.append(pathToDestinationStack[a][1])
-                a += 1
-
-            commonZones = set(pathCurrentSplit).intersection(pathDestinationSplit)
-
-            if len(pathCurrentSplit) > len(pathDestinationSplit):
-                largerPath = 'pathCurrentSplit'
-            elif len(pathDestinationSplit) > len(pathCurrentSplit):
-                largerPath = 'pathDestinationSplit'
-            else:
-                largerPath = ''
-
-            a = 0
-            countRemoved = 0
-            currZone = await p.zone_name()
-
-            pathCurrentSplitModified = pathCurrentSplit
-            pathDestinationSplitModified = pathDestinationSplit
-
-            if largerPath == 'pathCurrentSplit' or largerPath == '':
-                pathDestLength = len(pathDestinationSplit)
-                while a < pathDestLength:
-                    if pathCurrentSplit[a].strip() == pathDestinationSplit[a].strip():
-                        if countRemoved == len(commonZones) - 1 and currZone != pathDestinationSplit[a].strip():
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit
-                            countRemoved += 1
-
-                        elif countRemoved == len(commonZones) - 1:
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit[a + 1:]
-                            countRemoved += 1
-                        else:
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit[a + 1:]
-                            countRemoved += 1
-                    a += 1
-            else:
-                pathCurrLength = len(pathCurrentSplit)
-
-                while a < pathCurrLength:
-                    if pathCurrentSplit[a].strip() == pathDestinationSplit[a].strip():
-                        if countRemoved == len(commonZones) - 1 and currZone != pathDestinationSplit[a].strip():
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit
-                            countRemoved += 1
-                        elif countRemoved == len(commonZones) - 1:
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit[a + 1:]
-                            countRemoved += 1
-                        else:
-                            pathCurrentSplitModified = pathCurrentSplit[a + 1:]
-                            pathDestinationSplitModified = pathDestinationSplit[a + 1:]
-                            countRemoved += 1
-
-                        currReversed = list(reversed(pathCurrentSplitModified))
-                    a += 1
-
-            if len(pathCurrentSplitModified) > 0:
-                pathCurrentSplitModified.pop()
-
-            currReversed = list(reversed(pathCurrentSplitModified))
-
-            pathToCurrentZoneStack = pathCurrentSplitModified
-            pathToDestinationStack = pathDestinationSplitModified
-
-            # traverse down the current path back to the common zone, then stop
-            i = len(pathToCurrentZoneStack) - 1
-            if len(pathToCurrentZoneStack) > 0:
-                logger.info('Going back to most recent common zone')
-                while i >= 0:
-
-                    lines = iter(linesOriginal)
-                    currZone = await p.zone_name()
-                    gateFrom = pathToCurrentZoneStack[i].strip() + ';' + currZone
-
-                    # zonemap zones are stored as zone gates, from beginning of world to end
-                    returnGate = str(currZone) + ';' + str(pathToCurrentZoneStack[i].strip())
-                    for q, s in enumerate(lines):
-                        if s.strip() == 'END':
-                            break
-
-                        split = s.strip().split(';')
-                        rg = split[4] + ';' + split[5]
-                        if returnGate == rg:
-                            splitString = s.strip().split(';')
-                            x = splitString[1].strip()
-                            y = splitString[2].strip()
-                            z = splitString[3].strip()
-
-                            await gateTypeDifferentiation(float(x), float(y), float(z), p, splitString[0])
-
-                            currentZone = await p.zone_name()
-
-                            if p1WorldName in ['Empyrea', 'Karamelle', 'Lemuria']:
-                                await teleportToInteractiveTeleportIfAvailable(p, currentZone, destinationZone, interactiveTeleportersOriginal)
-                            break
-
-                    i -= 1
-
-        # reached the most recent common zone between the current and destination zones
-        # now traverse to the destination
-        i = 0
-        if len(pathToDestinationStack) != 0:
-            logger.info(f'Heading to destination zone {destinationZone}')
-
-        while i < len(pathToDestinationStack):
-
-            teleportedToZone = False
-
-            lines = iter(linesOriginal)
-            currZone = await p.zone_name()
-            zoneTo = pathToDestinationStack[i].strip()
-
-            gateFrom = currZone + ';' + zoneTo
-
-            if currZone.strip() != destinationZone.strip():
-                for q, s in enumerate(lines):
-
-                    if s.strip() == 'END':
-                        break
-
-                    split = s.strip().split(';')
-                    gf = split[4] + ';' + split[5]
-                    if gateFrom == gf:
-
-                        splitString = s.strip().split(';')
-                        x = splitString[1].strip()
-                        y = splitString[2].strip()
-                        z = splitString[3].strip()
-                        await gateTypeDifferentiation(float(x), float(y), float(z), p, splitString[0])
-
-                        currentZone = await p.zone_name()
-
-                        if p1WorldName in ['Empyrea', 'Karamelle', 'Lemuria']:
-                            await teleportToInteractiveTeleportIfAvailable(p, currentZone, destinationZone, interactiveTeleportersOriginal)
-
-                        break
-
-            i += 1
-
-            # if we didn't find a gate matching the next destination zone, the two zones are probably connected by teleporters.  Try teleporting there
-            zone = await p.zone_name()
-            if zone != destinationZone.strip():
-                if p1WorldName in ['Empyrea', 'Karamelle', 'Lemuria']:
-                    logger.info(f'Physical gate not found.  Attempting interactive teleport')
-                    await teleportToInteractiveTeleportIfAvailable(p, zone, zoneTo, interactiveTeleportersOriginal)
+    pathToZone = getPath(currentZone.lower(), destinationZone)
+    for path in pathToZone.items():
+        if currentZone == destinationZone:
+           break
+        zone_name = path[0]
+        path_details = path[1]
+        if zone_name == "zonedoor":
+            await p.teleport(XYZ(path_details['x'], path_details['y'], path_details['z']))
+            await asyncio.sleep(2)
+            await goToNewWorld(p, destinationZone)
+            logger.info(f'User in wrong world - heading to {destinationZone}')
+        else:
+            path_details = path[1]
+            await gateTypeDifferentiation(path_details['x'], path_details['y'], path_details['z'],  p, path_details['type'])
+        currentZone = await p.zone_name()
 
 
 @logger.catch()
@@ -1028,11 +751,8 @@ async def toZone(clients, destinationZone):
     currentZone = await clients[0].zone_name()
     worldName = currentZone.split('/', 1)[0]
 
-    interactiveTeleportersOriginal = await parseFile("traversalData/interactiveTeleporters.txt", worldName)
-    bigStackDestinations = await createStack(worldName)
-
     try:
-        await asyncio.gather(*[goToDestination(p, destinationZone, worldName, bigStackDestinations, interactiveTeleportersOriginal) for p in clients])
+        await asyncio.gather(*[goToDestination(p, destinationZone, worldName) for p in clients])
         logger.info(f'reached destination zone: {destinationZone}.')
         return 0
     except:
@@ -1116,8 +836,6 @@ async def main(clientHandler):
         await p.activate_hooks()
 
     logger.info('Hooks activated!')
-
-    
     try:
         await toZoneDisplayName(clients, 'golem court')
     finally:
